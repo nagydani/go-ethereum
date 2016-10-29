@@ -1,4 +1,27 @@
-import "mortal";
+pragma solidity ^0.4.3;
+
+// owned and mortal should be imports from std lib, when it stabilizes
+
+contract owned {
+    address owner;
+
+    modifier onlyowner() {
+        if (msg.sender == owner) {
+            _;
+        }
+    }
+
+    function owned() {
+        owner = msg.sender;
+    }
+}
+
+contract mortal is owned {
+    function kill() {
+        if (msg.sender == owner)
+            selfdestruct(owner);
+    }
+}
 
 /// @title Chequebook for Ethereum micropayments
 /// @author Daniel A. Nagy <daniel@ethdev.com>
@@ -8,6 +31,14 @@ contract chequebook is mortal {
 
     /// @notice Overdraft event
     event Overdraft(address deadbeat);
+
+    /// @notice Deposit event
+    event Deposit(uint256 amount);
+
+    /// @notice Top up chequebook
+    function() payable {
+        Deposit(msg.value);
+    }
 
     /// @notice Cash cheque
     ///
@@ -39,7 +70,7 @@ contract chequebook is mortal {
             // owner.sendToDebtorsPrison();
             Overdraft(owner);
             // Compensate beneficiary.
-            suicide(beneficiary);
+            selfdestruct(beneficiary);
         }
     }
 }

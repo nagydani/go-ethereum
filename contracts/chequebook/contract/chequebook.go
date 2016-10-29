@@ -6,18 +6,13 @@ package contract
 import (
 	"math/big"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // ChequebookABI is the input ABI used to generate the binding from.
-const ChequebookABI = `[{"constant":false,"inputs":[],"name":"kill","outputs":[],"type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"sent","outputs":[{"name":"","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"beneficiary","type":"address"},{"name":"amount","type":"uint256"},{"name":"sig_v","type":"uint8"},{"name":"sig_r","type":"bytes32"},{"name":"sig_s","type":"bytes32"}],"name":"cash","outputs":[],"type":"function"},{"anonymous":false,"inputs":[{"indexed":false,"name":"deadbeat","type":"address"}],"name":"Overdraft","type":"event"}]`
+const ChequebookABI = `[{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"address"}],"name":"sent","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"beneficiary","type":"address"},{"name":"amount","type":"uint256"},{"name":"sig_v","type":"uint8"},{"name":"sig_r","type":"bytes32"},{"name":"sig_s","type":"bytes32"}],"name":"cash","outputs":[],"payable":false,"type":"function"},{"payable":true,"type":"fallback"},{"anonymous":false,"inputs":[{"indexed":false,"name":"deadbeat","type":"address"}],"name":"Overdraft","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"amount","type":"uint256"}],"name":"Deposit","type":"event"}]`
 
 // ChequebookBin is the compiled bytecode used for deploying new contracts.
-const ChequebookBin = `0x606060405260008054600160a060020a031916331790556101ff806100246000396000f3606060405260e060020a600035046341c0e1b581146100315780637bf786f814610059578063fbf788d614610071575b005b61002f60005433600160a060020a03908116911614156100bd57600054600160a060020a0316ff5b6100ab60043560016020526000908152604090205481565b61002f600435602435604435606435608435600160a060020a03851660009081526001602052604081205485116100bf575b505050505050565b60408051918252519081900360200190f35b565b50604080516c0100000000000000000000000030600160a060020a0390811682028352881602601482015260288101869052815190819003604801812080825260ff861660208381019190915282840186905260608301859052925190926001926080818101939182900301816000866161da5a03f11561000257505060405151600054600160a060020a0390811691161461015a576100a3565b600160a060020a038681166000908152600160205260409020543090911631908603106101b357604060008181208790559051600160a060020a0388169190819081818181818881f1935050505015156100a357610002565b60005460408051600160a060020a03929092168252517f2250e2993c15843b32621c89447cc589ee7a9f049c026986e545d3c2c0c6f9789181900360200190a185600160a060020a0316ff`
+const ChequebookBin = `0x606060405260008054600160a060020a0319163317905561026c806100246000396000f3606060405236156100355760e060020a600035046341c0e1b5811461006e5780637bf786f81461009b578063fbf788d6146100b8575b6100f76040805134815290517f4d6ce1e535dbade1c23defba91e23b8f791ce5edc0cc320257a2b364e4e384269181900360200190a15b565b34610002576100f760005433600160a060020a039081169116141561006c57600054600160a060020a0316ff5b34610002576100f960043560016020526000908152604090205481565b34610002576100f7600435602435604435606435608435600160a060020a038516600090815260016020526040812054851161010b575b505050505050565b005b60408051918252519081900360200190f35b50604080516c01000000000000000000000000600160a060020a03308116820283528816026014820152602881018690528151908190036048018120600082815260208381018552928401819052835182815260ff88168185015280850187905260608101869052935191936001936080808301949193601f198301938390039091019190866161da5a03f115610002575050604051601f190151600054600160a060020a039081169116146101c0576100ef565b600160a060020a0386811660009081526001602052604090205430909116319086031061022157600160a060020a038616600081815260016020526040808220889055516108fc919081818181818888f1935050505015156100ef57610002565b60005460408051600160a060020a039092168252517f2250e2993c15843b32621c89447cc589ee7a9f049c026986e545d3c2c0c6f9789181900360200190a185600160a060020a0316ff`
 
 // DeployChequebook deploys a new Ethereum contract, binding an instance of Chequebook to it.
 func DeployChequebook(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Chequebook, error) {
@@ -228,10 +223,10 @@ func (_Chequebook *ChequebookTransactorSession) Kill() (*types.Transaction, erro
 }
 
 // MortalABI is the input ABI used to generate the binding from.
-const MortalABI = `[{"constant":false,"inputs":[],"name":"kill","outputs":[],"type":"function"}]`
+const MortalABI = `[{"constant":false,"inputs":[],"name":"kill","outputs":[],"payable":false,"type":"function"}]`
 
 // MortalBin is the compiled bytecode used for deploying new contracts.
-const MortalBin = `0x606060405260008054600160a060020a03191633179055605c8060226000396000f3606060405260e060020a600035046341c0e1b58114601a575b005b60186000543373ffffffffffffffffffffffffffffffffffffffff90811691161415605a5760005473ffffffffffffffffffffffffffffffffffffffff16ff5b56`
+const MortalBin = `0x606060405260008054600160a060020a0319163317905560648060226000396000f3606060405260e060020a600035046341c0e1b58114601c575b6002565b3460025760606000543373ffffffffffffffffffffffffffffffffffffffff9081169116141560625760005473ffffffffffffffffffffffffffffffffffffffff16ff5b005b56`
 
 // DeployMortal deploys a new Ethereum contract, binding an instance of Mortal to it.
 func DeployMortal(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Mortal, error) {
@@ -398,7 +393,7 @@ func (_Mortal *MortalTransactorSession) Kill() (*types.Transaction, error) {
 const OwnedABI = `[{"inputs":[],"type":"constructor"}]`
 
 // OwnedBin is the compiled bytecode used for deploying new contracts.
-const OwnedBin = `0x606060405260008054600160a060020a0319163317905560068060226000396000f3606060405200`
+const OwnedBin = `0x606060405260008054600160a060020a0319163317905560088060226000396000f36060604052600256`
 
 // DeployOwned deploys a new Ethereum contract, binding an instance of Owned to it.
 func DeployOwned(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *Owned, error) {
