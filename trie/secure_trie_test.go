@@ -51,7 +51,11 @@ func makeTestSecureTrie() (ethdb.Database, *SecureTrie, map[string][]byte) {
 		content[string(key)] = val
 		trie.Update(key, val)
 
+<<<<<<< HEAD
 		// Add some other data to inflate th trie
+=======
+		// Add some other data to inflate the trie
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		for j := byte(3); j < 13; j++ {
 			key, val = common.LeftPadBytes([]byte{j, i}, 32), []byte{j, i}
 			content[string(key)] = val

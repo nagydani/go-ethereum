@@ -34,7 +34,11 @@ type (
 		account *common.Address
 	}
 	resetObjectChange struct {
+<<<<<<< HEAD
 		prev *StateObject
+=======
+		prev *stateObject
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	suicideChange struct {
 		account     *common.Address
@@ -67,10 +71,24 @@ type (
 	addLogChange struct {
 		txhash common.Hash
 	}
+<<<<<<< HEAD
 )
 
 func (ch createObjectChange) undo(s *StateDB) {
 	s.GetStateObject(*ch.account).deleted = true
+=======
+	addPreimageChange struct {
+		hash common.Hash
+	}
+	touchChange struct {
+		account   *common.Address
+		prev      bool
+		prevDirty bool
+	}
+)
+
+func (ch createObjectChange) undo(s *StateDB) {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	delete(s.stateObjects, *ch.account)
 	delete(s.stateObjectsDirty, *ch.account)
 }
@@ -80,13 +98,18 @@ func (ch resetObjectChange) undo(s *StateDB) {
 }
 
 func (ch suicideChange) undo(s *StateDB) {
+<<<<<<< HEAD
 	obj := s.GetStateObject(*ch.account)
+=======
+	obj := s.getStateObject(*ch.account)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if obj != nil {
 		obj.suicided = ch.prev
 		obj.setBalance(ch.prevbalance)
 	}
 }
 
+<<<<<<< HEAD
 func (ch balanceChange) undo(s *StateDB) {
 	s.GetStateObject(*ch.account).setBalance(ch.prev)
 }
@@ -101,6 +124,33 @@ func (ch codeChange) undo(s *StateDB) {
 
 func (ch storageChange) undo(s *StateDB) {
 	s.GetStateObject(*ch.account).setState(ch.key, ch.prevalue)
+=======
+var ripemd = common.HexToAddress("0000000000000000000000000000000000000003")
+
+func (ch touchChange) undo(s *StateDB) {
+	if !ch.prev && *ch.account != ripemd {
+		s.getStateObject(*ch.account).touched = ch.prev
+		if !ch.prevDirty {
+			delete(s.stateObjectsDirty, *ch.account)
+		}
+	}
+}
+
+func (ch balanceChange) undo(s *StateDB) {
+	s.getStateObject(*ch.account).setBalance(ch.prev)
+}
+
+func (ch nonceChange) undo(s *StateDB) {
+	s.getStateObject(*ch.account).setNonce(ch.prev)
+}
+
+func (ch codeChange) undo(s *StateDB) {
+	s.getStateObject(*ch.account).setCode(common.BytesToHash(ch.prevhash), ch.prevcode)
+}
+
+func (ch storageChange) undo(s *StateDB) {
+	s.getStateObject(*ch.account).setState(ch.key, ch.prevalue)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 func (ch refundChange) undo(s *StateDB) {
@@ -114,4 +164,12 @@ func (ch addLogChange) undo(s *StateDB) {
 	} else {
 		s.logs[ch.txhash] = logs[:len(logs)-1]
 	}
+<<<<<<< HEAD
+=======
+	s.logSize--
+}
+
+func (ch addPreimageChange) undo(s *StateDB) {
+	delete(s.preimages, ch.hash)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }

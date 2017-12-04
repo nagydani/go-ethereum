@@ -80,6 +80,7 @@ var daoProForkGenesis = `{
 var daoGenesisHash = common.HexToHash("5e1fc79cb4ffa4739177b5408045cd5d51c6cf766133f23f7cd72ee1f8d790e0")
 var daoGenesisForkBlock = big.NewInt(314)
 
+<<<<<<< HEAD
 // Tests that the DAO hard-fork number and the nodes support/opposition is correctly
 // set in the database after various initialization procedures and invocations.
 func TestDAODefaultMainnet(t *testing.T) {
@@ -168,6 +169,30 @@ func TestDAOSwitchToOpposeProForkPrivnet(t *testing.T) {
 }
 
 func testDAOForkBlockNewChain(t *testing.T, testnet bool, genesis string, votes [][2]bool, expectBlock *big.Int, expectVote bool) {
+=======
+// TestDAOForkBlockNewChain tests that the DAO hard-fork number and the nodes support/opposition is correctly
+// set in the database after various initialization procedures and invocations.
+func TestDAOForkBlockNewChain(t *testing.T) {
+	for i, arg := range []struct {
+		genesis     string
+		expectBlock *big.Int
+		expectVote  bool
+	}{
+		// Test DAO Default Mainnet
+		{"", params.MainnetChainConfig.DAOForkBlock, true},
+		// test DAO Init Old Privnet
+		{daoOldGenesis, nil, false},
+		// test DAO Default No Fork Privnet
+		{daoNoForkGenesis, daoGenesisForkBlock, false},
+		// test DAO Default Pro Fork Privnet
+		{daoProForkGenesis, daoGenesisForkBlock, true},
+	} {
+		testDAOForkBlockNewChain(t, i, arg.genesis, arg.expectBlock, arg.expectVote)
+	}
+}
+
+func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBlock *big.Int, expectVote bool) {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	// Create a temporary data directory to use and inspect later
 	datadir := tmpdir(t)
 	defer os.RemoveAll(datadir)
@@ -176,6 +201,7 @@ func testDAOForkBlockNewChain(t *testing.T, testnet bool, genesis string, votes 
 	if genesis != "" {
 		json := filepath.Join(datadir, "genesis.json")
 		if err := ioutil.WriteFile(json, []byte(genesis), 0600); err != nil {
+<<<<<<< HEAD
 			t.Fatalf("failed to write genesis file: %v", err)
 		}
 		runGeth(t, "--datadir", datadir, "init", json).cmd.Wait()
@@ -202,23 +228,48 @@ func testDAOForkBlockNewChain(t *testing.T, testnet bool, genesis string, votes 
 	db, err := ethdb.NewLDBDatabase(path, 0, 0)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
+=======
+			t.Fatalf("test %d: failed to write genesis file: %v", test, err)
+		}
+		runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+	} else {
+		// Force chain initialization
+		args := []string{"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcdisable", "--datadir", datadir}
+		geth := runGeth(t, append(args, []string{"--exec", "2+2", "console"}...)...)
+		geth.WaitExit()
+	}
+	// Retrieve the DAO config flag from the database
+	path := filepath.Join(datadir, "geth", "chaindata")
+	db, err := ethdb.NewLDBDatabase(path, 0, 0)
+	if err != nil {
+		t.Fatalf("test %d: failed to open test database: %v", test, err)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	defer db.Close()
 
 	genesisHash := common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+<<<<<<< HEAD
 	if testnet {
 		genesisHash = common.HexToHash("0x0cd786a2425d16f152c658316c423e6ce1181e15c3295826d7c9904cba9ce303")
 	}
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if genesis != "" {
 		genesisHash = daoGenesisHash
 	}
 	config, err := core.GetChainConfig(db, genesisHash)
 	if err != nil {
+<<<<<<< HEAD
 		t.Fatalf("failed to retrieve chain config: %v", err)
+=======
+		t.Errorf("test %d: failed to retrieve chain config: %v", test, err)
+		return // we want to return here, the other checks can't make it past this point (nil panic).
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	// Validate the DAO hard-fork block number against the expected value
 	if config.DAOForkBlock == nil {
 		if expectBlock != nil {
+<<<<<<< HEAD
 			t.Errorf("dao hard-fork block mismatch: have nil, want %v", expectBlock)
 		}
 	} else if expectBlock == nil {
@@ -228,5 +279,16 @@ func testDAOForkBlockNewChain(t *testing.T, testnet bool, genesis string, votes 
 	}
 	if config.DAOForkSupport != expectVote {
 		t.Errorf("dao hard-fork support mismatch: have %v, want %v", config.DAOForkSupport, expectVote)
+=======
+			t.Errorf("test %d: dao hard-fork block mismatch: have nil, want %v", test, expectBlock)
+		}
+	} else if expectBlock == nil {
+		t.Errorf("test %d: dao hard-fork block mismatch: have %v, want nil", test, config.DAOForkBlock)
+	} else if config.DAOForkBlock.Cmp(expectBlock) != 0 {
+		t.Errorf("test %d: dao hard-fork block mismatch: have %v, want %v", test, config.DAOForkBlock, expectBlock)
+	}
+	if config.DAOForkSupport != expectVote {
+		t.Errorf("test %d: dao hard-fork support mismatch: have %v, want %v", test, config.DAOForkSupport, expectVote)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 }

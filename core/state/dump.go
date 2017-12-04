@@ -22,6 +22,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+<<<<<<< HEAD
+=======
+	"github.com/ethereum/go-ethereum/trie"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 type DumpAccount struct {
@@ -40,11 +44,15 @@ type Dump struct {
 
 func (self *StateDB) RawDump() Dump {
 	dump := Dump{
+<<<<<<< HEAD
 		Root:     common.Bytes2Hex(self.trie.Root()),
+=======
+		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		Accounts: make(map[string]DumpAccount),
 	}
 
-	it := self.trie.Iterator()
+	it := trie.NewIterator(self.trie.NodeIterator(nil))
 	for it.Next() {
 		addr := self.trie.GetKey(it.Key)
 		var data Account
@@ -61,7 +69,11 @@ func (self *StateDB) RawDump() Dump {
 			Code:     common.Bytes2Hex(obj.Code(self.db)),
 			Storage:  make(map[string]string),
 		}
+<<<<<<< HEAD
 		storageIt := obj.getTrie(self.db).Iterator()
+=======
+		storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		for storageIt.Next() {
 			account.Storage[common.Bytes2Hex(self.trie.GetKey(storageIt.Key))] = common.Bytes2Hex(storageIt.Value)
 		}

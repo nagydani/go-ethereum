@@ -97,11 +97,23 @@ func TestCustomGenesis(t *testing.T) {
 		if err := ioutil.WriteFile(json, []byte(tt.genesis), 0600); err != nil {
 			t.Fatalf("test %d: failed to write genesis file: %v", i, err)
 		}
+<<<<<<< HEAD
 		runGeth(t, "--datadir", datadir, "init", json).cmd.Wait()
 
 		// Query the custom genesis block
 		geth := runGeth(t, "--datadir", datadir, "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcdisable", "--exec", tt.query, "console")
 		geth.expectRegexp(tt.result)
 		geth.expectExit()
+=======
+		runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+
+		// Query the custom genesis block
+		geth := runGeth(t,
+			"--datadir", datadir, "--maxpeers", "0", "--port", "0",
+			"--nodiscover", "--nat", "none", "--ipcdisable",
+			"--exec", tt.query, "console")
+		geth.ExpectRegexp(tt.result)
+		geth.ExpectExit()
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 }

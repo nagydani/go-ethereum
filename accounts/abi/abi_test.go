@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+<<<<<<< HEAD
 // formatSilceOutput add padding to the value and adds a size
 func formatSliceOutput(v ...[]byte) []byte {
 	off := common.LeftPadBytes(big.NewInt(int64(len(v))).Bytes(), 32)
@@ -421,6 +422,8 @@ func TestMethodPack(t *testing.T) {
 	}
 }
 
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 const jsondata = `
 [
 	{ "type" : "function", "name" : "balance", "constant" : true },
@@ -449,12 +452,12 @@ func TestReader(t *testing.T) {
 	Uint256, _ := NewType("uint256")
 	exp := ABI{
 		Methods: map[string]Method{
-			"balance": Method{
+			"balance": {
 				"balance", true, nil, nil,
 			},
-			"send": Method{
+			"send": {
 				"send", false, []Argument{
-					Argument{"amount", Uint256, false},
+					{"amount", Uint256, false},
 				}, nil,
 			},
 		},
@@ -553,7 +556,7 @@ func TestTestSlice(t *testing.T) {
 
 func TestMethodSignature(t *testing.T) {
 	String, _ := NewType("string")
-	m := Method{"foo", false, []Argument{Argument{"bar", String, false}, Argument{"baz", String, false}}, nil}
+	m := Method{"foo", false, []Argument{{"bar", String, false}, {"baz", String, false}}, nil}
 	exp := "foo(string,string)"
 	if m.Sig() != exp {
 		t.Error("signature mismatch", exp, "!=", m.Sig())
@@ -564,8 +567,8 @@ func TestMethodSignature(t *testing.T) {
 		t.Errorf("expected ids to match %x != %x", m.Id(), idexp)
 	}
 
-	uintt, _ := NewType("uint")
-	m = Method{"foo", false, []Argument{Argument{"bar", uintt, false}}, nil}
+	uintt, _ := NewType("uint256")
+	m = Method{"foo", false, []Argument{{"bar", uintt, false}}, nil}
 	exp = "foo(uint256)"
 	if m.Sig() != exp {
 		t.Error("signature mismatch", exp, "!=", m.Sig())
@@ -756,397 +759,57 @@ func TestDefaultFunctionParsing(t *testing.T) {
 func TestBareEvents(t *testing.T) {
 	const definition = `[
 	{ "type" : "event", "name" : "balance" },
-	{ "type" : "event", "name" : "name" }]`
-
-	abi, err := JSON(strings.NewReader(definition))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(abi.Events) != 2 {
-		t.Error("expected 2 events")
-	}
-
-	if _, ok := abi.Events["balance"]; !ok {
-		t.Error("expected 'balance' event to be present")
-	}
-
-	if _, ok := abi.Events["name"]; !ok {
-		t.Error("expected 'name' event to be present")
-	}
-}
-
-func TestMultiReturnWithStruct(t *testing.T) {
-	const definition = `[
-	{ "name" : "multi", "constant" : false, "outputs": [ { "name": "Int", "type": "uint256" }, { "name": "String", "type": "string" } ] }]`
-
-	abi, err := JSON(strings.NewReader(definition))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// using buff to make the code readable
-	buff := new(bytes.Buffer)
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000040"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000005"))
-	stringOut := "hello"
-	buff.Write(common.RightPadBytes([]byte(stringOut), 32))
-
-	var inter struct {
-		Int    *big.Int
-		String string
-	}
-	err = abi.Unpack(&inter, "multi", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if inter.Int == nil || inter.Int.Cmp(big.NewInt(1)) != 0 {
-		t.Error("expected Int to be 1 got", inter.Int)
-	}
-
-	if inter.String != stringOut {
-		t.Error("expected String to be", stringOut, "got", inter.String)
-	}
-
-	var reversed struct {
-		String string
-		Int    *big.Int
-	}
-
-	err = abi.Unpack(&reversed, "multi", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if reversed.Int == nil || reversed.Int.Cmp(big.NewInt(1)) != 0 {
-		t.Error("expected Int to be 1 got", reversed.Int)
-	}
-
-	if reversed.String != stringOut {
-		t.Error("expected String to be", stringOut, "got", reversed.String)
-	}
-}
-
-func TestMultiReturnWithSlice(t *testing.T) {
-	const definition = `[
-	{ "name" : "multi", "constant" : false, "outputs": [ { "name": "Int", "type": "uint256" }, { "name": "String", "type": "string" } ] }]`
-
-	abi, err := JSON(strings.NewReader(definition))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// using buff to make the code readable
-	buff := new(bytes.Buffer)
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000040"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000005"))
-	stringOut := "hello"
-	buff.Write(common.RightPadBytes([]byte(stringOut), 32))
-
-	var inter []interface{}
-	err = abi.Unpack(&inter, "multi", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(inter) != 2 {
-		t.Fatal("expected 2 results got", len(inter))
-	}
-
-	if num, ok := inter[0].(*big.Int); !ok || num.Cmp(big.NewInt(1)) != 0 {
-		t.Error("expected index 0 to be 1 got", num)
-	}
-
-	if str, ok := inter[1].(string); !ok || str != stringOut {
-		t.Error("expected index 1 to be", stringOut, "got", str)
-	}
-}
-
-func TestMarshalArrays(t *testing.T) {
-	const definition = `[
-	{ "name" : "bytes32", "constant" : false, "outputs": [ { "type": "bytes32" } ] },
-	{ "name" : "bytes10", "constant" : false, "outputs": [ { "type": "bytes10" } ] }
+	{ "type" : "event", "name" : "anon", "anonymous" : true},
+	{ "type" : "event", "name" : "args", "inputs" : [{ "indexed":false, "name":"arg0", "type":"uint256" }, { "indexed":true, "name":"arg1", "type":"address" }] }
 	]`
 
+	arg0, _ := NewType("uint256")
+	arg1, _ := NewType("address")
+
+	expectedEvents := map[string]struct {
+		Anonymous bool
+		Args      []Argument
+	}{
+		"balance": {false, nil},
+		"anon":    {true, nil},
+		"args": {false, []Argument{
+			{Name: "arg0", Type: arg0, Indexed: false},
+			{Name: "arg1", Type: arg1, Indexed: true},
+		}},
+	}
+
 	abi, err := JSON(strings.NewReader(definition))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	output := common.LeftPadBytes([]byte{1}, 32)
-
-	var bytes10 [10]byte
-	err = abi.Unpack(&bytes10, "bytes32", output)
-	if err == nil || err.Error() != "abi: cannot unmarshal src (len=32) in to dst (len=10)" {
-		t.Error("expected error or bytes32 not be assignable to bytes10:", err)
+	if len(abi.Events) != len(expectedEvents) {
+		t.Fatalf("invalid number of events after parsing, want %d, got %d", len(expectedEvents), len(abi.Events))
 	}
 
-	var bytes32 [32]byte
-	err = abi.Unpack(&bytes32, "bytes32", output)
-	if err != nil {
-		t.Error("didn't expect error:", err)
-	}
-	if !bytes.Equal(bytes32[:], output) {
-		t.Error("expected bytes32[31] to be 1 got", bytes32[31])
-	}
-
-	type (
-		B10 [10]byte
-		B32 [32]byte
-	)
-
-	var b10 B10
-	err = abi.Unpack(&b10, "bytes32", output)
-	if err == nil || err.Error() != "abi: cannot unmarshal src (len=32) in to dst (len=10)" {
-		t.Error("expected error or bytes32 not be assignable to bytes10:", err)
-	}
-
-	var b32 B32
-	err = abi.Unpack(&b32, "bytes32", output)
-	if err != nil {
-		t.Error("didn't expect error:", err)
-	}
-	if !bytes.Equal(b32[:], output) {
-		t.Error("expected bytes32[31] to be 1 got", bytes32[31])
-	}
-
-	output[10] = 1
-	var shortAssignLong [32]byte
-	err = abi.Unpack(&shortAssignLong, "bytes10", output)
-	if err != nil {
-		t.Error("didn't expect error:", err)
-	}
-	if !bytes.Equal(output, shortAssignLong[:]) {
-		t.Errorf("expected %x to be %x", shortAssignLong, output)
-	}
-}
-
-func TestUnmarshal(t *testing.T) {
-	const definition = `[
-	{ "name" : "int", "constant" : false, "outputs": [ { "type": "uint256" } ] },
-	{ "name" : "bool", "constant" : false, "outputs": [ { "type": "bool" } ] },
-	{ "name" : "bytes", "constant" : false, "outputs": [ { "type": "bytes" } ] },
-	{ "name" : "fixed", "constant" : false, "outputs": [ { "type": "bytes32" } ] },
-	{ "name" : "multi", "constant" : false, "outputs": [ { "type": "bytes" }, { "type": "bytes" } ] },
-	{ "name" : "addressSliceSingle", "constant" : false, "outputs": [ { "type": "address[]" } ] },
-	{ "name" : "addressSliceDouble", "constant" : false, "outputs": [ { "name": "a", "type": "address[]" }, { "name": "b", "type": "address[]" } ] },
-	{ "name" : "mixedBytes", "constant" : true, "outputs": [ { "name": "a", "type": "bytes" }, { "name": "b", "type": "bytes32" } ] }]`
-
-	abi, err := JSON(strings.NewReader(definition))
-	if err != nil {
-		t.Fatal(err)
-	}
-	buff := new(bytes.Buffer)
-
-	// marshal int
-	var Int *big.Int
-	err = abi.Unpack(&Int, "int", common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if Int == nil || Int.Cmp(big.NewInt(1)) != 0 {
-		t.Error("expected Int to be 1 got", Int)
-	}
-
-	// marshal bool
-	var Bool bool
-	err = abi.Unpack(&Bool, "bool", common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !Bool {
-		t.Error("expected Bool to be true")
-	}
-
-	// marshal dynamic bytes max length 32
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	bytesOut := common.RightPadBytes([]byte("hello"), 32)
-	buff.Write(bytesOut)
-
-	var Bytes []byte
-	err = abi.Unpack(&Bytes, "bytes", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !bytes.Equal(Bytes, bytesOut) {
-		t.Errorf("expected %x got %x", bytesOut, Bytes)
-	}
-
-	// marshall dynamic bytes max length 64
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000040"))
-	bytesOut = common.RightPadBytes([]byte("hello"), 64)
-	buff.Write(bytesOut)
-
-	err = abi.Unpack(&Bytes, "bytes", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !bytes.Equal(Bytes, bytesOut) {
-		t.Errorf("expected %x got %x", bytesOut, Bytes)
-	}
-
-	// marshall dynamic bytes max length 63
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	buff.Write(common.Hex2Bytes("000000000000000000000000000000000000000000000000000000000000003f"))
-	bytesOut = common.RightPadBytes([]byte("hello"), 63)
-	buff.Write(bytesOut)
-
-	err = abi.Unpack(&Bytes, "bytes", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !bytes.Equal(Bytes, bytesOut) {
-		t.Errorf("expected %x got %x", bytesOut, Bytes)
-	}
-
-	// marshal dynamic bytes output empty
-	err = abi.Unpack(&Bytes, "bytes", nil)
-	if err == nil {
-		t.Error("expected error")
-	}
-
-	// marshal dynamic bytes length 5
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000005"))
-	buff.Write(common.RightPadBytes([]byte("hello"), 32))
-
-	err = abi.Unpack(&Bytes, "bytes", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !bytes.Equal(Bytes, []byte("hello")) {
-		t.Errorf("expected %x got %x", bytesOut, Bytes)
-	}
-
-	// marshal dynamic bytes length 5
-	buff.Reset()
-	buff.Write(common.RightPadBytes([]byte("hello"), 32))
-
-	var hash common.Hash
-	err = abi.Unpack(&hash, "fixed", buff.Bytes())
-	if err != nil {
-		t.Error(err)
-	}
-
-	helloHash := common.BytesToHash(common.RightPadBytes([]byte("hello"), 32))
-	if hash != helloHash {
-		t.Errorf("Expected %x to equal %x", hash, helloHash)
-	}
-
-	// marshal error
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	err = abi.Unpack(&Bytes, "bytes", buff.Bytes())
-	if err == nil {
-		t.Error("expected error")
-	}
-
-	err = abi.Unpack(&Bytes, "multi", make([]byte, 64))
-	if err == nil {
-		t.Error("expected error")
-	}
-
-	// marshal mixed bytes
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000040"))
-	fixed := common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001")
-	buff.Write(fixed)
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020"))
-	bytesOut = common.RightPadBytes([]byte("hello"), 32)
-	buff.Write(bytesOut)
-
-	var out []interface{}
-	err = abi.Unpack(&out, "mixedBytes", buff.Bytes())
-	if err != nil {
-		t.Fatal("didn't expect error:", err)
-	}
-
-	if !bytes.Equal(bytesOut, out[0].([]byte)) {
-		t.Errorf("expected %x, got %x", bytesOut, out[0])
-	}
-
-	if !bytes.Equal(fixed, out[1].([]byte)) {
-		t.Errorf("expected %x, got %x", fixed, out[1])
-	}
-
-	// marshal address slice
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020")) // offset
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001")) // size
-	buff.Write(common.Hex2Bytes("0000000000000000000000000100000000000000000000000000000000000000"))
-
-	var outAddr []common.Address
-	err = abi.Unpack(&outAddr, "addressSliceSingle", buff.Bytes())
-	if err != nil {
-		t.Fatal("didn't expect error:", err)
-	}
-
-	if len(outAddr) != 1 {
-		t.Fatal("expected 1 item, got", len(outAddr))
-	}
-
-	if outAddr[0] != (common.Address{1}) {
-		t.Errorf("expected %x, got %x", common.Address{1}, outAddr[0])
-	}
-
-	// marshal multiple address slice
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000040")) // offset
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000080")) // offset
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001")) // size
-	buff.Write(common.Hex2Bytes("0000000000000000000000000100000000000000000000000000000000000000"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000002")) // size
-	buff.Write(common.Hex2Bytes("0000000000000000000000000200000000000000000000000000000000000000"))
-	buff.Write(common.Hex2Bytes("0000000000000000000000000300000000000000000000000000000000000000"))
-
-	var outAddrStruct struct {
-		A []common.Address
-		B []common.Address
-	}
-	err = abi.Unpack(&outAddrStruct, "addressSliceDouble", buff.Bytes())
-	if err != nil {
-		t.Fatal("didn't expect error:", err)
-	}
-
-	if len(outAddrStruct.A) != 1 {
-		t.Fatal("expected 1 item, got", len(outAddrStruct.A))
-	}
-
-	if outAddrStruct.A[0] != (common.Address{1}) {
-		t.Errorf("expected %x, got %x", common.Address{1}, outAddrStruct.A[0])
-	}
-
-	if len(outAddrStruct.B) != 2 {
-		t.Fatal("expected 1 item, got", len(outAddrStruct.B))
-	}
-
-	if outAddrStruct.B[0] != (common.Address{2}) {
-		t.Errorf("expected %x, got %x", common.Address{2}, outAddrStruct.B[0])
-	}
-	if outAddrStruct.B[1] != (common.Address{3}) {
-		t.Errorf("expected %x, got %x", common.Address{3}, outAddrStruct.B[1])
-	}
-
-	// marshal invalid address slice
-	buff.Reset()
-	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000100"))
-
-	err = abi.Unpack(&outAddr, "addressSliceSingle", buff.Bytes())
-	if err == nil {
-		t.Fatal("expected error:", err)
+	for name, exp := range expectedEvents {
+		got, ok := abi.Events[name]
+		if !ok {
+			t.Errorf("could not found event %s", name)
+			continue
+		}
+		if got.Anonymous != exp.Anonymous {
+			t.Errorf("invalid anonymous indication for event %s, want %v, got %v", name, exp.Anonymous, got.Anonymous)
+		}
+		if len(got.Inputs) != len(exp.Args) {
+			t.Errorf("invalid number of args, want %d, got %d", len(exp.Args), len(got.Inputs))
+			continue
+		}
+		for i, arg := range exp.Args {
+			if arg.Name != got.Inputs[i].Name {
+				t.Errorf("events[%s].Input[%d] has an invalid name, want %s, got %s", name, i, arg.Name, got.Inputs[i].Name)
+			}
+			if arg.Indexed != got.Inputs[i].Indexed {
+				t.Errorf("events[%s].Input[%d] has an invalid indexed indication, want %v, got %v", name, i, arg.Indexed, got.Inputs[i].Indexed)
+			}
+			if arg.Type.T != got.Inputs[i].Type.T {
+				t.Errorf("events[%s].Input[%d] has an invalid type, want %x, got %x", name, i, arg.Type.T, got.Inputs[i].Type.T)
+			}
+		}
 	}
 }

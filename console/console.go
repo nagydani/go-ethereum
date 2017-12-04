@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // Copyright 2015 The go-ethereum Authors
+=======
+// Copyright 2016 The go-ethereum Authors
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -36,9 +40,15 @@ import (
 )
 
 var (
+<<<<<<< HEAD
 	passwordRegexp = regexp.MustCompile("personal.[nus]")
 	onlyWhitespace = regexp.MustCompile("^\\s*$")
 	exit           = regexp.MustCompile("^\\s*exit\\s*;*\\s*$")
+=======
+	passwordRegexp = regexp.MustCompile(`personal.[nus]`)
+	onlyWhitespace = regexp.MustCompile(`^\s*$`)
+	exit           = regexp.MustCompile(`^\s*exit\s*;*\s*$`)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 // HistoryFile is the file within the data directory to store input scrollback.
@@ -47,12 +57,20 @@ const HistoryFile = "history"
 // DefaultPrompt is the default prompt line prefix to use for user input querying.
 const DefaultPrompt = "> "
 
+<<<<<<< HEAD
 // Config is te collection of configurations to fine tune the behavior of the
+=======
+// Config is the collection of configurations to fine tune the behavior of the
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 // JavaScript console.
 type Config struct {
 	DataDir  string       // Data directory to store the console history at
 	DocRoot  string       // Filesystem path from where to load JavaScript files from
+<<<<<<< HEAD
 	Client   rpc.Client   // RPC client to execute Ethereum requests through
+=======
+	Client   *rpc.Client  // RPC client to execute Ethereum requests through
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	Prompt   string       // Input prompt prefix string (defaults to DefaultPrompt)
 	Prompter UserPrompter // Input prompter to allow interactive user feedback (defaults to TerminalPrompter)
 	Printer  io.Writer    // Output writer to serialize any display strings to (defaults to os.Stdout)
@@ -63,7 +81,11 @@ type Config struct {
 // JavaScript console attached to a running node via an external or in-process RPC
 // client.
 type Console struct {
+<<<<<<< HEAD
 	client   rpc.Client   // RPC client to execute Ethereum requests through
+=======
+	client   *rpc.Client  // RPC client to execute Ethereum requests through
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	jsre     *jsre.JSRE   // JavaScript runtime environment running the interpreter
 	prompt   string       // Input prompt prefix string
 	prompter UserPrompter // Input prompter to allow interactive user feedback
@@ -137,10 +159,20 @@ func (c *Console) init(preload []string) error {
 			continue // manually mapped or ignore
 		}
 		if file, ok := web3ext.Modules[api]; ok {
+<<<<<<< HEAD
+=======
+			// Load our extension for the module.
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 			if err = c.jsre.Compile(fmt.Sprintf("%s.js", api), file); err != nil {
 				return fmt.Errorf("%s.js: %v", api, err)
 			}
 			flatten += fmt.Sprintf("var %s = web3.%s; ", api, api)
+<<<<<<< HEAD
+=======
+		} else if obj, err := c.jsre.Run("web3." + api); err == nil && obj.IsObject() {
+			// Enable web3.js built-in extension if available.
+			flatten += fmt.Sprintf("var %s = web3.%s; ", api, api)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
 	}
 	if _, err = c.jsre.Run(flatten); err != nil {
@@ -156,19 +188,41 @@ func (c *Console) init(preload []string) error {
 		if err != nil {
 			return err
 		}
+<<<<<<< HEAD
 		// Override the unlockAccount and newAccount methods since these require user interaction.
 		// Assign the jeth.unlockAccount and jeth.newAccount in the Console the original web3 callbacks.
 		// These will be called by the jeth.* methods after they got the password from the user and send
 		// the original web3 request to the backend.
 		if obj := personal.Object(); obj != nil { // make sure the personal api is enabled over the interface
+=======
+		// Override the openWallet, unlockAccount, newAccount and sign methods since
+		// these require user interaction. Assign these method in the Console the
+		// original web3 callbacks. These will be called by the jeth.* methods after
+		// they got the password from the user and send the original web3 request to
+		// the backend.
+		if obj := personal.Object(); obj != nil { // make sure the personal api is enabled over the interface
+			if _, err = c.jsre.Run(`jeth.openWallet = personal.openWallet;`); err != nil {
+				return fmt.Errorf("personal.openWallet: %v", err)
+			}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 			if _, err = c.jsre.Run(`jeth.unlockAccount = personal.unlockAccount;`); err != nil {
 				return fmt.Errorf("personal.unlockAccount: %v", err)
 			}
 			if _, err = c.jsre.Run(`jeth.newAccount = personal.newAccount;`); err != nil {
 				return fmt.Errorf("personal.newAccount: %v", err)
 			}
+<<<<<<< HEAD
 			obj.Set("unlockAccount", bridge.UnlockAccount)
 			obj.Set("newAccount", bridge.NewAccount)
+=======
+			if _, err = c.jsre.Run(`jeth.sign = personal.sign;`); err != nil {
+				return fmt.Errorf("personal.sign: %v", err)
+			}
+			obj.Set("openWallet", bridge.OpenWallet)
+			obj.Set("unlockAccount", bridge.UnlockAccount)
+			obj.Set("newAccount", bridge.NewAccount)
+			obj.Set("sign", bridge.Sign)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
 	}
 	// The admin.sleep and admin.sleepBlocks are offered by the console and not by the RPC layer.
@@ -223,9 +277,15 @@ func (c *Console) AutoCompleteInput(line string, pos int) (string, []string, str
 	}
 	// Chunck data to relevant part for autocompletion
 	// E.g. in case of nested lines eth.getBalance(eth.coinb<tab><tab>
+<<<<<<< HEAD
 	start := 0
 	for start = pos - 1; start > 0; start-- {
 		// Skip all methods and namespaces (i.e. including te dot)
+=======
+	start := pos - 1
+	for ; start > 0; start-- {
+		// Skip all methods and namespaces (i.e. including the dot)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		if line[start] == '.' || (line[start] >= 'a' && line[start] <= 'z') || (line[start] >= 'A' && line[start] <= 'Z') {
 			continue
 		}
@@ -272,10 +332,14 @@ func (c *Console) Evaluate(statement string) error {
 			fmt.Fprintf(c.printer, "[native] error: %v\n", r)
 		}
 	}()
+<<<<<<< HEAD
 	if err := c.jsre.Evaluate(statement, c.printer); err != nil {
 		return err
 	}
 	return nil
+=======
+	return c.jsre.Evaluate(statement, c.printer)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 // Interactive starts an interactive user session, where input is propted from

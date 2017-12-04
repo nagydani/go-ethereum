@@ -17,39 +17,41 @@
 package filters
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
-
-	"golang.org/x/net/context"
 )
 
 var (
-	filterTickerTime = 5 * time.Minute
+	deadline = 5 * time.Minute // consider a filter inactive if it has not been polled for within deadline
 )
 
-// byte will be inferred
-const (
-	unknownFilterTy = iota
-	blockFilterTy
-	transactionFilterTy
-	logFilterTy
-)
+// filter is a helper struct that holds meta information over the filter type
+// and associated subscription in the event system.
+type filter struct {
+	typ      Type
+	deadline *time.Timer // filter is inactiv when deadline triggers
+	hashes   []common.Hash
+	crit     FilterCriteria
+	logs     []*types.Log
+	s        *Subscription // associated subscription in event system
+}
 
 // PublicFilterAPI offers support to create and manage filters. This will allow external clients to retrieve various
 // information related to the Ethereum protocol such als blocks, transactions and logs.
 type PublicFilterAPI struct {
+<<<<<<< HEAD
 	mux *event.TypeMux
 
 	quit    chan struct{}
@@ -68,34 +70,37 @@ type PublicFilterAPI struct {
 
 	transactionMu    sync.RWMutex
 	transactionQueue map[int]*hashQueue
+=======
+	backend   Backend
+	mux       *event.TypeMux
+	quit      chan struct{}
+	chainDb   ethdb.Database
+	events    *EventSystem
+	filtersMu sync.Mutex
+	filters   map[rpc.ID]*filter
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 // NewPublicFilterAPI returns a new PublicFilterAPI instance.
-func NewPublicFilterAPI(chainDb ethdb.Database, mux *event.TypeMux) *PublicFilterAPI {
-	svc := &PublicFilterAPI{
-		mux:              mux,
-		chainDb:          chainDb,
-		filterManager:    NewFilterSystem(mux),
-		filterMapping:    make(map[string]int),
-		logQueue:         make(map[int]*logQueue),
-		blockQueue:       make(map[int]*hashQueue),
-		transactionQueue: make(map[int]*hashQueue),
+func NewPublicFilterAPI(backend Backend, lightMode bool) *PublicFilterAPI {
+	api := &PublicFilterAPI{
+		backend: backend,
+		mux:     backend.EventMux(),
+		chainDb: backend.ChainDb(),
+		events:  NewEventSystem(backend.EventMux(), backend, lightMode),
+		filters: make(map[rpc.ID]*filter),
 	}
-	go svc.start()
-	return svc
+	go api.timeoutLoop()
+
+	return api
 }
 
-// Stop quits the work loop.
-func (s *PublicFilterAPI) Stop() {
-	close(s.quit)
-}
-
-// start the work loop, wait and process events.
-func (s *PublicFilterAPI) start() {
-	timer := time.NewTicker(2 * time.Second)
-	defer timer.Stop()
-done:
+// timeoutLoop runs every 5 minutes and deletes filters that have not been recently used.
+// Tt is started when the api is created.
+func (api *PublicFilterAPI) timeoutLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
 	for {
+<<<<<<< HEAD
 		select {
 		case <-timer.C:
 			s.filterManager.Lock() // lock order like filterLoop()
@@ -105,34 +110,69 @@ done:
 					s.filterManager.Remove(id)
 					delete(s.logQueue, id)
 				}
+=======
+		<-ticker.C
+		api.filtersMu.Lock()
+		for id, f := range api.filters {
+			select {
+			case <-f.deadline.C:
+				f.s.Unsubscribe()
+				delete(api.filters, id)
+			default:
+				continue
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 			}
-			s.logMu.Unlock()
+		}
+		api.filtersMu.Unlock()
+	}
+}
 
-			s.blockMu.Lock()
-			for id, filter := range s.blockQueue {
-				if time.Since(filter.timeout) > filterTickerTime {
-					s.filterManager.Remove(id)
-					delete(s.blockQueue, id)
-				}
-			}
-			s.blockMu.Unlock()
+// NewPendingTransactionFilter creates a filter that fetches pending transaction hashes
+// as transactions enter the pending state.
+//
+// It is part of the filter package because this filter can be used throug the
+// `eth_getFilterChanges` polling method that is also used for log filters.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newpendingtransactionfilter
+func (api *PublicFilterAPI) NewPendingTransactionFilter() rpc.ID {
+	var (
+		pendingTxs   = make(chan common.Hash)
+		pendingTxSub = api.events.SubscribePendingTxEvents(pendingTxs)
+	)
 
-			s.transactionMu.Lock()
-			for id, filter := range s.transactionQueue {
-				if time.Since(filter.timeout) > filterTickerTime {
-					s.filterManager.Remove(id)
-					delete(s.transactionQueue, id)
+	api.filtersMu.Lock()
+	api.filters[pendingTxSub.ID] = &filter{typ: PendingTransactionsSubscription, deadline: time.NewTimer(deadline), hashes: make([]common.Hash, 0), s: pendingTxSub}
+	api.filtersMu.Unlock()
+
+	go func() {
+		for {
+			select {
+			case ph := <-pendingTxs:
+				api.filtersMu.Lock()
+				if f, found := api.filters[pendingTxSub.ID]; found {
+					f.hashes = append(f.hashes, ph)
 				}
+				api.filtersMu.Unlock()
+			case <-pendingTxSub.Err():
+				api.filtersMu.Lock()
+				delete(api.filters, pendingTxSub.ID)
+				api.filtersMu.Unlock()
+				return
 			}
+<<<<<<< HEAD
 			s.transactionMu.Unlock()
 			s.filterManager.Unlock()
 		case <-s.quit:
 			break done
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
-	}
+	}()
 
+	return pendingTxSub.ID
 }
 
+<<<<<<< HEAD
 // NewBlockFilter create a new filter that returns blocks that are included into the canonical chain.
 func (s *PublicFilterAPI) NewBlockFilter() (string, error) {
 	// protect filterManager.Add() and setting of filter fields
@@ -153,23 +193,111 @@ func (s *PublicFilterAPI) NewBlockFilter() (string, error) {
 	s.blockMu.Lock()
 	s.blockQueue[id] = &hashQueue{timeout: time.Now()}
 	s.blockMu.Unlock()
-
-	filter.BlockCallback = func(block *types.Block, logs vm.Logs) {
-		s.blockMu.Lock()
-		defer s.blockMu.Unlock()
-
-		if queue := s.blockQueue[id]; queue != nil {
-			queue.add(block.Hash())
-		}
+=======
+// NewPendingTransactions creates a subscription that is triggered each time a transaction
+// enters the transaction pool and was signed from one of the transactions this nodes manages.
+func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
+	rpcSub := notifier.CreateSubscription()
+
+	go func() {
+		txHashes := make(chan common.Hash)
+		pendingTxSub := api.events.SubscribePendingTxEvents(txHashes)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
+
+		for {
+			select {
+			case h := <-txHashes:
+				notifier.Notify(rpcSub.ID, h)
+			case <-rpcSub.Err():
+				pendingTxSub.Unsubscribe()
+				return
+			case <-notifier.Closed():
+				pendingTxSub.Unsubscribe()
+				return
+			}
+		}
+	}()
+
+	return rpcSub, nil
+}
+
+// NewBlockFilter creates a filter that fetches blocks that are imported into the chain.
+// It is part of the filter package since polling goes with eth_getFilterChanges.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newblockfilter
+func (api *PublicFilterAPI) NewBlockFilter() rpc.ID {
+	var (
+		headers   = make(chan *types.Header)
+		headerSub = api.events.SubscribeNewHeads(headers)
+	)
+
+	api.filtersMu.Lock()
+	api.filters[headerSub.ID] = &filter{typ: BlocksSubscription, deadline: time.NewTimer(deadline), hashes: make([]common.Hash, 0), s: headerSub}
+	api.filtersMu.Unlock()
+
+	go func() {
+		for {
+			select {
+			case h := <-headers:
+				api.filtersMu.Lock()
+				if f, found := api.filters[headerSub.ID]; found {
+					f.hashes = append(f.hashes, h.Hash())
+				}
+				api.filtersMu.Unlock()
+			case <-headerSub.Err():
+				api.filtersMu.Lock()
+				delete(api.filters, headerSub.ID)
+				api.filtersMu.Unlock()
+				return
+			}
+		}
+	}()
+
+	return headerSub.ID
+}
+
+// NewHeads send a notification each time a new (header) block is appended to the chain.
+func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+
+<<<<<<< HEAD
 	s.filterMapMu.Lock()
 	s.filterMapping[externalId] = id
 	s.filterMapMu.Unlock()
+=======
+	rpcSub := notifier.CreateSubscription()
 
-	return externalId, nil
+	go func() {
+		headers := make(chan *types.Header)
+		headersSub := api.events.SubscribeNewHeads(headers)
+
+		for {
+			select {
+			case h := <-headers:
+				notifier.Notify(rpcSub.ID, h)
+			case <-rpcSub.Err():
+				headersSub.Unsubscribe()
+				return
+			case <-notifier.Closed():
+				headersSub.Unsubscribe()
+				return
+			}
+		}
+	}()
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
+
+	return rpcSub, nil
 }
 
+<<<<<<< HEAD
 // NewPendingTransactionFilter creates a filter that returns new pending transactions.
 func (s *PublicFilterAPI) NewPendingTransactionFilter() (string, error) {
 	// protect filterManager.Add() and setting of filter fields
@@ -183,42 +311,89 @@ func (s *PublicFilterAPI) NewPendingTransactionFilter() (string, error) {
 
 	filter := New(s.chainDb)
 	id, err := s.filterManager.Add(filter, PendingTxFilter)
-	if err != nil {
-		return "", err
+=======
+// Logs creates a subscription that fires for all new log that match the given filter criteria.
+func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subscription, error) {
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
+	var (
+		rpcSub      = notifier.CreateSubscription()
+		matchedLogs = make(chan []*types.Log)
+	)
+
+	logsSub, err := api.events.SubscribeLogs(crit, matchedLogs)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
+	if err != nil {
+		return nil, err
+	}
+
+<<<<<<< HEAD
 	s.transactionMu.Lock()
 	s.transactionQueue[id] = &hashQueue{timeout: time.Now()}
 	s.transactionMu.Unlock()
+=======
+	go func() {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 
-	filter.TransactionCallback = func(tx *types.Transaction) {
-		s.transactionMu.Lock()
-		defer s.transactionMu.Unlock()
-
-		if queue := s.transactionQueue[id]; queue != nil {
-			queue.add(tx.Hash())
+		for {
+			select {
+			case logs := <-matchedLogs:
+				for _, log := range logs {
+					notifier.Notify(rpcSub.ID, &log)
+				}
+			case <-rpcSub.Err(): // client send an unsubscribe request
+				logsSub.Unsubscribe()
+				return
+			case <-notifier.Closed(): // connection dropped
+				logsSub.Unsubscribe()
+				return
+			}
 		}
-	}
+	}()
 
-	s.filterMapMu.Lock()
-	s.filterMapping[externalId] = id
-	s.filterMapMu.Unlock()
-
-	return externalId, nil
+	return rpcSub, nil
 }
 
+<<<<<<< HEAD
 // newLogFilter creates a new log filter.
 func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []common.Address, topics [][]common.Hash, callback func(log *vm.Log, removed bool)) (int, error) {
 	// protect filterManager.Add() and setting of filter fields
 	s.filterManager.Lock()
 	defer s.filterManager.Unlock()
+=======
+// FilterCriteria represents a request to create a new filter.
+type FilterCriteria struct {
+	FromBlock *big.Int
+	ToBlock   *big.Int
+	Addresses []common.Address
+	Topics    [][]common.Hash
+}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 
-	filter := New(s.chainDb)
-	id, err := s.filterManager.Add(filter, LogFilter)
+// NewFilter creates a new filter and returns the filter id. It can be
+// used to retrieve logs when the state changes. This method cannot be
+// used to fetch logs that are already stored in the state.
+//
+// Default criteria for the from and to block are "latest".
+// Using "latest" as block number will return logs for mined blocks.
+// Using "pending" as block number returns logs for not yet mined (pending) blocks.
+// In case logs are removed (chain reorg) previously returned logs are returned
+// again but with the removed property set to true.
+//
+// In case "fromBlock" > "toBlock" an error is returned.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newfilter
+func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
+	logs := make(chan []*types.Log)
+	logsSub, err := api.events.SubscribeLogs(crit, logs)
 	if err != nil {
-		return 0, err
+		return rpc.ID(""), err
 	}
 
+<<<<<<< HEAD
 	s.logMu.Lock()
 	s.logQueue[id] = &logQueue{timeout: time.Now()}
 	s.logMu.Unlock()
@@ -235,74 +410,168 @@ func (s *PublicFilterAPI) newLogFilter(earliest, latest int64, addresses []commo
 			defer s.logMu.Unlock()
 			if queue := s.logQueue[id]; queue != nil {
 				queue.add(vmlog{log, removed})
+=======
+	api.filtersMu.Lock()
+	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit, deadline: time.NewTimer(deadline), logs: make([]*types.Log, 0), s: logsSub}
+	api.filtersMu.Unlock()
+
+	go func() {
+		for {
+			select {
+			case l := <-logs:
+				api.filtersMu.Lock()
+				if f, found := api.filters[logsSub.ID]; found {
+					f.logs = append(f.logs, l...)
+				}
+				api.filtersMu.Unlock()
+			case <-logsSub.Err():
+				api.filtersMu.Lock()
+				delete(api.filters, logsSub.ID)
+				api.filtersMu.Unlock()
+				return
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 			}
 		}
-	}
+	}()
 
-	return id, nil
+	return logsSub.ID, nil
 }
 
+<<<<<<< HEAD
 // Logs creates a subscription that fires for all new log that match the given filter criteria.
 func (s *PublicFilterAPI) Logs(ctx context.Context, args NewFilterArgs) (rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, rpc.ErrNotificationsUnsupported
+=======
+// GetLogs returns logs matching the given argument that are stored within the state.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
+func (api *PublicFilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([]*types.Log, error) {
+	// Convert the RPC block numbers into internal representations
+	if crit.FromBlock == nil {
+		crit.FromBlock = big.NewInt(rpc.LatestBlockNumber.Int64())
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
+	if crit.ToBlock == nil {
+		crit.ToBlock = big.NewInt(rpc.LatestBlockNumber.Int64())
+	}
+	// Create and run the filter to get all the logs
+	filter := New(api.backend, crit.FromBlock.Int64(), crit.ToBlock.Int64(), crit.Addresses, crit.Topics)
 
-	var (
-		externalId   string
-		subscription rpc.Subscription
-		err          error
-	)
-
-	if externalId, err = newFilterId(); err != nil {
+	logs, err := filter.Logs(ctx)
+	if err != nil {
 		return nil, err
 	}
+	return returnLogs(logs), err
+}
 
-	// uninstall filter when subscription is unsubscribed/cancelled
-	if subscription, err = notifier.NewSubscription(func(string) {
-		s.UninstallFilter(externalId)
-	}); err != nil {
-		return nil, err
+// UninstallFilter removes the filter with the given filter id.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_uninstallfilter
+func (api *PublicFilterAPI) UninstallFilter(id rpc.ID) bool {
+	api.filtersMu.Lock()
+	f, found := api.filters[id]
+	if found {
+		delete(api.filters, id)
+	}
+	api.filtersMu.Unlock()
+	if found {
+		f.s.Unsubscribe()
 	}
 
-	notifySubscriber := func(log *vm.Log, removed bool) {
-		rpcLog := toRPCLogs(vm.Logs{log}, removed)
-		if err := subscription.Notify(rpcLog); err != nil {
-			subscription.Cancel()
+	return found
+}
+
+// GetFilterLogs returns the logs for the filter with the given id.
+// If the filter could not be found an empty array of logs is returned.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterlogs
+func (api *PublicFilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Log, error) {
+	api.filtersMu.Lock()
+	f, found := api.filters[id]
+	api.filtersMu.Unlock()
+
+	if !found || f.typ != LogsSubscription {
+		return nil, fmt.Errorf("filter not found")
+	}
+
+	begin := rpc.LatestBlockNumber.Int64()
+	if f.crit.FromBlock != nil {
+		begin = f.crit.FromBlock.Int64()
+	}
+	end := rpc.LatestBlockNumber.Int64()
+	if f.crit.ToBlock != nil {
+		end = f.crit.ToBlock.Int64()
+	}
+	// Create and run the filter to get all the logs
+	filter := New(api.backend, begin, end, f.crit.Addresses, f.crit.Topics)
+
+	logs, err := filter.Logs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return returnLogs(logs), nil
+}
+
+// GetFilterChanges returns the logs for the filter with the given id since
+// last time it was called. This can be used for polling.
+//
+// For pending transaction and block filters the result is []common.Hash.
+// (pending)Log filters return []Log.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterchanges
+func (api *PublicFilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
+	api.filtersMu.Lock()
+	defer api.filtersMu.Unlock()
+
+	if f, found := api.filters[id]; found {
+		if !f.deadline.Stop() {
+			// timer expired but filter is not yet removed in timeout loop
+			// receive timer value and reset timer
+			<-f.deadline.C
+		}
+		f.deadline.Reset(deadline)
+
+		switch f.typ {
+		case PendingTransactionsSubscription, BlocksSubscription:
+			hashes := f.hashes
+			f.hashes = nil
+			return returnHashes(hashes), nil
+		case LogsSubscription:
+			logs := f.logs
+			f.logs = nil
+			return returnLogs(logs), nil
 		}
 	}
 
-	// from and to block number are not used since subscriptions don't allow you to travel to "time"
-	var id int
-	if len(args.Addresses) > 0 {
-		id, err = s.newLogFilter(-1, -1, args.Addresses, args.Topics, notifySubscriber)
-	} else {
-		id, err = s.newLogFilter(-1, -1, nil, args.Topics, notifySubscriber)
-	}
-
-	if err != nil {
-		subscription.Cancel()
-		return nil, err
-	}
-
-	s.filterMapMu.Lock()
-	s.filterMapping[externalId] = id
-	s.filterMapMu.Unlock()
-
-	return subscription, err
+	return []interface{}{}, fmt.Errorf("filter not found")
 }
 
-// NewFilterArgs represents a request to create a new filter.
-type NewFilterArgs struct {
-	FromBlock rpc.BlockNumber
-	ToBlock   rpc.BlockNumber
-	Addresses []common.Address
-	Topics    [][]common.Hash
+// returnHashes is a helper that will return an empty hash array case the given hash array is nil,
+// otherwise the given hashes array is returned.
+func returnHashes(hashes []common.Hash) []common.Hash {
+	if hashes == nil {
+		return []common.Hash{}
+	}
+	return hashes
+}
+
+// returnLogs is a helper that will return an empty log array in case the given logs array is nil,
+// otherwise the given logs array is returned.
+func returnLogs(logs []*types.Log) []*types.Log {
+	if logs == nil {
+		return []*types.Log{}
+	}
+	return logs
 }
 
 // UnmarshalJSON sets *args fields with given data.
+<<<<<<< HEAD
 func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
+=======
+func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	type input struct {
 		From      *rpc.BlockNumber `json:"fromBlock"`
 		ToBlock   *rpc.BlockNumber `json:"toBlock"`
@@ -315,53 +584,49 @@ func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if raw.From == nil || raw.From.Int64() < 0 {
-		args.FromBlock = rpc.LatestBlockNumber
-	} else {
-		args.FromBlock = *raw.From
+	if raw.From != nil {
+		args.FromBlock = big.NewInt(raw.From.Int64())
 	}
 
-	if raw.ToBlock == nil || raw.ToBlock.Int64() < 0 {
-		args.ToBlock = rpc.LatestBlockNumber
-	} else {
-		args.ToBlock = *raw.ToBlock
+	if raw.ToBlock != nil {
+		args.ToBlock = big.NewInt(raw.ToBlock.Int64())
 	}
 
 	args.Addresses = []common.Address{}
 
 	if raw.Addresses != nil {
 		// raw.Address can contain a single address or an array of addresses
+<<<<<<< HEAD
 		var addresses []common.Address
 		if strAddrs, ok := raw.Addresses.([]interface{}); ok {
 			for i, addr := range strAddrs {
+=======
+		switch rawAddr := raw.Addresses.(type) {
+		case []interface{}:
+			for i, addr := range rawAddr {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 				if strAddr, ok := addr.(string); ok {
-					if len(strAddr) >= 2 && strAddr[0] == '0' && (strAddr[1] == 'x' || strAddr[1] == 'X') {
-						strAddr = strAddr[2:]
+					addr, err := decodeAddress(strAddr)
+					if err != nil {
+						return fmt.Errorf("invalid address at index %d: %v", i, err)
 					}
-					if decAddr, err := hex.DecodeString(strAddr); err == nil {
-						addresses = append(addresses, common.BytesToAddress(decAddr))
-					} else {
-						return fmt.Errorf("invalid address given")
-					}
+					args.Addresses = append(args.Addresses, addr)
 				} else {
-					return fmt.Errorf("invalid address on index %d", i)
+					return fmt.Errorf("non-string address at index %d", i)
 				}
 			}
-		} else if singleAddr, ok := raw.Addresses.(string); ok {
-			if len(singleAddr) >= 2 && singleAddr[0] == '0' && (singleAddr[1] == 'x' || singleAddr[1] == 'X') {
-				singleAddr = singleAddr[2:]
+		case string:
+			addr, err := decodeAddress(rawAddr)
+			if err != nil {
+				return fmt.Errorf("invalid address: %v", err)
 			}
-			if decAddr, err := hex.DecodeString(singleAddr); err == nil {
-				addresses = append(addresses, common.BytesToAddress(decAddr))
-			} else {
-				return fmt.Errorf("invalid address given")
-			}
-		} else {
-			return errors.New("invalid address(es) given")
+			args.Addresses = []common.Address{addr}
+		default:
+			return errors.New("invalid addresses in query")
 		}
-		args.Addresses = addresses
 	}
 
+<<<<<<< HEAD
 	// helper function which parses a string to a topic hash
 	topicConverter := func(raw string) (common.Hash, error) {
 		if len(raw) == 0 {
@@ -379,25 +644,51 @@ func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
 		return common.Hash{}, errors.New("invalid topic(s)")
 	}
 
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	// topics is an array consisting of strings and/or arrays of strings.
 	// JSON null values are converted to common.Hash{} and ignored by the filter manager.
 	if len(raw.Topics) > 0 {
 		args.Topics = make([][]common.Hash, len(raw.Topics))
 		for i, t := range raw.Topics {
+<<<<<<< HEAD
 			if t == nil { // ignore topic when matching logs
 				args.Topics[i] = []common.Hash{common.Hash{}}
 			} else if topic, ok := t.(string); ok { // match specific topic
 				top, err := topicConverter(topic)
+=======
+			switch topic := t.(type) {
+			case nil:
+				// ignore topic when matching logs
+
+			case string:
+				// match specific topic
+				top, err := decodeTopic(topic)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 				if err != nil {
 					return err
 				}
 				args.Topics[i] = []common.Hash{top}
+<<<<<<< HEAD
 			} else if topics, ok := t.([]interface{}); ok { // or case e.g. [null, "topic0", "topic1"]
 				for _, rawTopic := range topics {
 					if rawTopic == nil {
 						args.Topics[i] = append(args.Topics[i], common.Hash{})
 					} else if topic, ok := rawTopic.(string); ok {
 						parsed, err := topicConverter(topic)
+=======
+
+			case []interface{}:
+				// or case e.g. [null, "topic0", "topic1"]
+				for _, rawTopic := range topic {
+					if rawTopic == nil {
+						// null component, match all
+						args.Topics[i] = nil
+						break
+					}
+					if topic, ok := rawTopic.(string); ok {
+						parsed, err := decodeTopic(topic)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 						if err != nil {
 							return err
 						}
@@ -406,7 +697,11 @@ func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
 						return fmt.Errorf("invalid topic(s)")
 					}
 				}
+<<<<<<< HEAD
 			} else {
+=======
+			default:
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 				return fmt.Errorf("invalid topic(s)")
 			}
 		}
@@ -415,6 +710,7 @@ func (args *NewFilterArgs) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+<<<<<<< HEAD
 // NewFilter creates a new filter and returns the filter id. It can be uses to retrieve logs.
 func (s *PublicFilterAPI) NewFilter(args NewFilterArgs) (string, error) {
 	externalId, err := newFilterId()
@@ -654,15 +950,20 @@ func toRPCLogs(logs vm.Logs, removed bool) []vmlog {
 	convertedLogs := make([]vmlog, len(logs))
 	for i, log := range logs {
 		convertedLogs[i] = vmlog{Log: log, Removed: removed}
+=======
+func decodeAddress(s string) (common.Address, error) {
+	b, err := hexutil.Decode(s)
+	if err == nil && len(b) != common.AddressLength {
+		err = fmt.Errorf("hex has invalid length %d after decoding", len(b))
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
-	return convertedLogs
+	return common.BytesToAddress(b), err
 }
 
-// returnHashes is a helper that will return an empty hash array case the given hash array is nil, otherwise is will
-// return the given hashes. The RPC interfaces defines that always an array is returned.
-func returnHashes(hashes []common.Hash) []common.Hash {
-	if hashes == nil {
-		return []common.Hash{}
+func decodeTopic(s string) (common.Hash, error) {
+	b, err := hexutil.Decode(s)
+	if err == nil && len(b) != common.HashLength {
+		err = fmt.Errorf("hex has invalid length %d after decoding", len(b))
 	}
-	return hashes
+	return common.BytesToHash(b), err
 }

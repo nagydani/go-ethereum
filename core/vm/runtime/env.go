@@ -21,43 +21,24 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
-// Env is a basic runtime environment required for running the EVM.
-type Env struct {
-	ruleSet vm.RuleSet
-	depth   int
-	state   *state.StateDB
+func NewEnv(cfg *Config) *vm.EVM {
+	context := vm.Context{
+		CanTransfer: core.CanTransfer,
+		Transfer:    core.Transfer,
+		GetHash:     func(uint64) common.Hash { return common.Hash{} },
 
-	origin   common.Address
-	coinbase common.Address
-
-	number     *big.Int
-	time       *big.Int
-	difficulty *big.Int
-	gasLimit   *big.Int
-
-	logs []vm.StructLog
-
-	getHashFn func(uint64) common.Hash
-
-	evm *vm.EVM
-}
-
-// NewEnv returns a new vm.Environment
-func NewEnv(cfg *Config, state *state.StateDB) vm.Environment {
-	env := &Env{
-		ruleSet:    cfg.RuleSet,
-		state:      state,
-		origin:     cfg.Origin,
-		coinbase:   cfg.Coinbase,
-		number:     cfg.BlockNumber,
-		time:       cfg.Time,
-		difficulty: cfg.Difficulty,
-		gasLimit:   cfg.GasLimit,
+		Origin:      cfg.Origin,
+		Coinbase:    cfg.Coinbase,
+		BlockNumber: cfg.BlockNumber,
+		Time:        cfg.Time,
+		Difficulty:  cfg.Difficulty,
+		GasLimit:    new(big.Int).SetUint64(cfg.GasLimit),
+		GasPrice:    cfg.GasPrice,
 	}
+<<<<<<< HEAD
 	env.evm = vm.New(env, vm.Config{
 		Debug:     cfg.Debug,
 		EnableJit: !cfg.DisableJit,
@@ -121,7 +102,8 @@ func (self *Env) CallCode(caller vm.ContractRef, addr common.Address, data []byt
 func (self *Env) DelegateCall(me vm.ContractRef, addr common.Address, data []byte, gas, price *big.Int) ([]byte, error) {
 	return core.DelegateCall(self, me, addr, data, gas, price)
 }
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 
-func (self *Env) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
-	return core.Create(self, caller, data, gas, price, value)
+	return vm.NewEVM(context, cfg.State, cfg.ChainConfig, cfg.EVMConfig)
 }

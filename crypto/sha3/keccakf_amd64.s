@@ -322,7 +322,10 @@
 // func keccakF1600(state *[25]uint64)
 TEXT ·keccakF1600(SB), 0, $200-8
 	MOVQ state+0(FP), rpState
+<<<<<<< HEAD
 	SUBQ $(8*25), SP
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 
 	// Convert the user state into an internal state
 	NOTQ _be(rpState)
@@ -388,5 +391,8 @@ TEXT ·keccakF1600(SB), 0, $200-8
 	NOTQ _mi(rpState)
 	NOTQ _sa(rpState)
 
+<<<<<<< HEAD
 	ADDQ $(8*25), SP
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	RET

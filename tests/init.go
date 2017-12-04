@@ -1,4 +1,4 @@
-// Copyright 2015 The go-ethereum Authors
+// Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package tests implements execution of Ethereum JSON tests.
 package tests
 
 import (
-	"encoding/json"
 	"fmt"
+<<<<<<< HEAD
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -103,18 +102,73 @@ func readJsonFile(fn string, value interface{}) error {
 		return fmt.Errorf("%s in file %s", err.Error(), fn)
 	}
 	return nil
+=======
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/params"
+)
+
+// This table defines supported forks and their chain config.
+var Forks = map[string]*params.ChainConfig{
+	"Frontier": {
+		ChainId: big.NewInt(1),
+	},
+	"Homestead": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+	},
+	"EIP150": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+	},
+	"EIP158": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+	},
+	"Byzantium": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+		DAOForkBlock:   big.NewInt(0),
+		ByzantiumBlock: big.NewInt(0),
+	},
+	"FrontierToHomesteadAt5": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(5),
+	},
+	"HomesteadToEIP150At5": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(5),
+	},
+	"HomesteadToDaoAt5": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		DAOForkBlock:   big.NewInt(5),
+		DAOForkSupport: true,
+	},
+	"EIP158ToByzantiumAt5": {
+		ChainId:        big.NewInt(1),
+		HomesteadBlock: big.NewInt(0),
+		EIP150Block:    big.NewInt(0),
+		EIP155Block:    big.NewInt(0),
+		EIP158Block:    big.NewInt(0),
+		ByzantiumBlock: big.NewInt(5),
+	},
 }
 
-// findLine returns the line number for the given offset into data.
-func findLine(data []byte, offset int64) (line int) {
-	line = 1
-	for i, r := range string(data) {
-		if int64(i) >= offset {
-			return
-		}
-		if r == '\n' {
-			line++
-		}
-	}
-	return
+// UnsupportedForkError is returned when a test requests a fork that isn't implemented.
+type UnsupportedForkError struct {
+	Name string
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
+}
+
+func (e UnsupportedForkError) Error() string {
+	return fmt.Sprintf("unsupported fork %q", e.Name)
 }

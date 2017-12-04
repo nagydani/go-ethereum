@@ -17,12 +17,12 @@
 package vm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/params"
 )
 
+<<<<<<< HEAD
 var (
 	GasQuickStep   = big.NewInt(2)
 	GasFastestStep = big.NewInt(3)
@@ -37,12 +37,26 @@ var (
 	GasContractByte = big.NewInt(200)
 
 	n64 = big.NewInt(64)
+=======
+const (
+	GasQuickStep   uint64 = 2
+	GasFastestStep uint64 = 3
+	GasFastStep    uint64 = 5
+	GasMidStep     uint64 = 8
+	GasSlowStep    uint64 = 10
+	GasExtStep     uint64 = 20
+
+	GasReturn       uint64 = 0
+	GasStop         uint64 = 0
+	GasContractByte uint64 = 200
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 // calcGas returns the actual gas cost of the call.
 //
 // The cost of gas was changed during the homestead price change HF. To allow for EIP150
 // to be implemented. The returned gas is gas - base * 63 / 64.
+<<<<<<< HEAD
 func callGas(gasTable params.GasTable, availableGas, base, callCost *big.Int) *big.Int {
 	if gasTable.CreateBySuicide != nil {
 		availableGas = new(big.Int).Sub(availableGas, base)
@@ -76,27 +90,24 @@ func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 
 		if r.stackPush > 0 && stack.len()-r.stackPop+r.stackPush > int(params.StackLimit.Int64()) {
 			return fmt.Errorf("stack limit reached %d (%d)", stack.len(), params.StackLimit.Int64())
+=======
+func callGas(gasTable params.GasTable, availableGas, base uint64, callCost *big.Int) (uint64, error) {
+	if gasTable.CreateBySuicide > 0 {
+		availableGas = availableGas - base
+		gas := availableGas - availableGas/64
+		// If the bit length exceeds 64 bit we know that the newly calculated "gas" for EIP150
+		// is smaller than the requested amount. Therefor we return the new gas instead
+		// of returning an error.
+		if callCost.BitLen() > 64 || gas < callCost.Uint64() {
+			return gas, nil
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
-
-		gas.Add(gas, r.gas)
 	}
-	return nil
-}
+	if callCost.BitLen() > 64 {
+		return 0, errGasUintOverflow
+	}
 
-// casts a arbitrary number to the amount of words (sets of 32 bytes)
-func toWordSize(size *big.Int) *big.Int {
-	tmp := new(big.Int)
-	tmp.Add(size, u256(31))
-	tmp.Div(tmp, u256(32))
-	return tmp
-}
-
-type req struct {
-	stackPop  int
-	gas       *big.Int
-	stackPush int
-}
-
+<<<<<<< HEAD
 var _baseCheck = map[OpCode]req{
 	// opcode  |  stack pop | gas price | stack push
 	ADD:          {2, GasFastestStep, 1},
@@ -162,4 +173,7 @@ var _baseCheck = map[OpCode]req{
 	RETURN:       {2, Zero, 0},
 	PUSH1:        {0, GasFastestStep, 1},
 	DUP1:         {0, Zero, 1},
+=======
+	return callCost.Uint64(), nil
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }

@@ -38,7 +38,11 @@ func TestStrictTxListAdd(t *testing.T) {
 	// Insert the transactions in a random order
 	list := newTxList(true)
 	for _, v := range rand.Perm(len(txs)) {
+<<<<<<< HEAD
 		list.Add(txs[v])
+=======
+		list.Add(txs[v], DefaultTxPoolConfig.PriceBump)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	// Verify internal state
 	if len(list.txs.items) != len(txs) {

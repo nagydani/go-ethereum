@@ -2,7 +2,11 @@ Source: {{.Name}}
 Section: science
 Priority: extra
 Maintainer: {{.Author}}
+<<<<<<< HEAD
 Build-Depends: debhelper (>= 8.0.0), golang-1.7
+=======
+Build-Depends: debhelper (>= 8.0.0), golang-1.9
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 Standards-Version: 3.9.5
 Homepage: https://ethereum.org
 Vcs-Git: git://github.com/ethereum/go-ethereum.git
@@ -13,7 +17,11 @@ Architecture: any
 Depends: ${misc:Depends}, {{.ExeList}}
 Description: Meta-package to install geth and other tools
  Meta-package to install geth and other tools
+<<<<<<< HEAD
  
+=======
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 {{range .Executables}}
 Package: {{$.ExeName .}}
 Conflicts: {{$.ExeConflicts .}}

@@ -21,15 +21,24 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+<<<<<<< HEAD
 	"math/big"
 	"os"
 	"path/filepath"
+=======
+	"os"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"strings"
 	"testing"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
+=======
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/internal/jsre"
@@ -80,8 +89,11 @@ type tester struct {
 	console   *Console
 	input     *hookedPrompter
 	output    *bytes.Buffer
+<<<<<<< HEAD
 
 	lastConfirm string
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 // newTester creates a test environment based on which the console can operate.
@@ -92,18 +104,32 @@ func newTester(t *testing.T, confOverride func(*eth.Config)) *tester {
 	if err != nil {
 		t.Fatalf("failed to create temporary keystore: %v", err)
 	}
+<<<<<<< HEAD
 	accman := accounts.NewPlaintextManager(filepath.Join(workspace, "keystore"))
 
 	// Create a networkless protocol stack and start an Ethereum service within
 	stack, err := node.New(&node.Config{DataDir: workspace, Name: testInstance, NoDiscovery: true})
+=======
+
+	// Create a networkless protocol stack and start an Ethereum service within
+	stack, err := node.New(&node.Config{DataDir: workspace, UseLightweightKDF: true, Name: testInstance})
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if err != nil {
 		t.Fatalf("failed to create node: %v", err)
 	}
 	ethConf := &eth.Config{
+<<<<<<< HEAD
 		ChainConfig:    &core.ChainConfig{HomesteadBlock: new(big.Int)},
 		Etherbase:      common.HexToAddress(testAddress),
 		AccountManager: accman,
 		PowTest:        true,
+=======
+		Genesis:   core.DeveloperGenesisBlock(15, common.Address{}),
+		Etherbase: common.HexToAddress(testAddress),
+		Ethash: ethash.Config{
+			PowMode: ethash.ModeTest,
+		},
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	if confOverride != nil {
 		confOverride(ethConf)

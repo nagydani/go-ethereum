@@ -1,4 +1,4 @@
-// Copyright 2015 The go-ethereum Authors
+// Copyright 2017 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -17,10 +17,11 @@
 package tests
 
 import (
-	"math/big"
-	"os"
-	"path/filepath"
+	"bytes"
+	"fmt"
+	"reflect"
 	"testing"
+<<<<<<< HEAD
 )
 
 func BenchmarkStateCall1024(b *testing.B) {
@@ -254,179 +255,79 @@ func TestStateTestsRandom(t *testing.T) {
 	for _, fn := range fns {
 		if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
 			t.Error(fn, err)
+=======
+
+	"github.com/ethereum/go-ethereum/core/vm"
+)
+
+func TestState(t *testing.T) {
+	t.Parallel()
+
+	st := new(testMatcher)
+	// Long tests:
+	st.skipShortMode(`^stQuadraticComplexityTest/`)
+	// Broken tests:
+	st.skipLoad(`^stTransactionTest/OverflowGasRequire\.json`) // gasLimit > 256 bits
+	st.skipLoad(`^stTransactionTest/zeroSigTransa[^/]*\.json`) // EIP-86 is not supported yet
+	// Expected failures:
+	st.fails(`^stRevertTest/RevertPrecompiledTouch\.json/EIP158`, "bug in test")
+	st.fails(`^stRevertTest/RevertPrefoundEmptyOOG\.json/EIP158`, "bug in test")
+	st.fails(`^stRevertTest/RevertPrecompiledTouch\.json/Byzantium`, "bug in test")
+	st.fails(`^stRevertTest/RevertPrefoundEmptyOOG\.json/Byzantium`, "bug in test")
+	st.fails(`^stRandom/randomStatetest645\.json/EIP150/.*`, "known bug #15119")
+	st.fails(`^stRandom/randomStatetest645\.json/Frontier/.*`, "known bug #15119")
+	st.fails(`^stRandom/randomStatetest645\.json/Homestead/.*`, "known bug #15119")
+	st.fails(`^stRandom/randomStatetest644\.json/EIP150/.*`, "known bug #15119")
+	st.fails(`^stRandom/randomStatetest644\.json/Frontier/.*`, "known bug #15119")
+	st.fails(`^stRandom/randomStatetest644\.json/Homestead/.*`, "known bug #15119")
+	st.fails(`^stCreateTest/TransactionCollisionToEmpty\.json/EIP158/2`, "known bug ")
+	st.fails(`^stCreateTest/TransactionCollisionToEmpty\.json/EIP158/3`, "known bug ")
+	st.fails(`^stCreateTest/TransactionCollisionToEmpty\.json/Byzantium/2`, "known bug ")
+	st.fails(`^stCreateTest/TransactionCollisionToEmpty\.json/Byzantium/3`, "known bug ")
+	st.walk(t, stateTestDir, func(t *testing.T, name string, test *StateTest) {
+		for _, subtest := range test.Subtests() {
+			subtest := subtest
+			key := fmt.Sprintf("%s/%d", subtest.Fork, subtest.Index)
+			name := name + "/" + key
+			t.Run(key, func(t *testing.T) {
+				if subtest.Fork == "Constantinople" {
+					t.Skip("constantinople not supported yet")
+				}
+				withTrace(t, test.gasLimit(subtest), func(vmconfig vm.Config) error {
+					_, err := test.Run(subtest, vmconfig)
+					return st.checkFailure(t, name, err)
+				})
+			})
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
-	}
+	})
 }
 
-// homestead tests
-func TestHomesteadStateSystemOperations(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
+// Transactions with gasLimit above this value will not get a VM trace on failure.
+//const traceErrorLimit = 400000
+const traceErrorLimit = 0
 
-	fn := filepath.Join(stateTestDir, "Homestead", "stSystemOperationsTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
+func withTrace(t *testing.T, gasLimit uint64, test func(vm.Config) error) {
+	err := test(vm.Config{})
+	if err == nil {
+		return
 	}
-}
-
-func TestHomesteadStatePreCompiledContracts(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
+	t.Error(err)
+	if gasLimit > traceErrorLimit {
+		t.Log("gas limit too high for EVM trace")
+		return
 	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stPreCompiledContracts.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
+	tracer := vm.NewStructLogger(nil)
+	err2 := test(vm.Config{Debug: true, Tracer: tracer})
+	if !reflect.DeepEqual(err, err2) {
+		t.Errorf("different error for second run: %v", err2)
 	}
-}
-
-func TestHomesteadStateRecursiveCreate(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stSpecialTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadStateRefund(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stRefundTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadStateInitCode(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stInitCodeTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadStateLog(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stLogTests.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadStateTransaction(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stTransactionTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadCallCreateCallCode(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stCallCreateCallCodeTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadCallCodes(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stCallCodes.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadMemory(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stMemoryTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadMemoryStress(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	if os.Getenv("TEST_VM_COMPLEX") == "" {
-		t.Skip()
-	}
-	fn := filepath.Join(stateTestDir, "Homestead", "stMemoryStressTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadQuadraticComplexity(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	if os.Getenv("TEST_VM_COMPLEX") == "" {
-		t.Skip()
-	}
-	fn := filepath.Join(stateTestDir, "Homestead", "stQuadraticComplexityTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadWallet(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stWalletTest.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadDelegateCodes(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stCallDelegateCodes.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
-	}
-}
-
-func TestHomesteadDelegateCodesCallCode(t *testing.T) {
-	ruleSet := RuleSet{
-		HomesteadBlock: new(big.Int),
-	}
-
-	fn := filepath.Join(stateTestDir, "Homestead", "stCallDelegateCodesCallCode.json")
-	if err := RunStateTest(ruleSet, fn, StateSkipTests); err != nil {
-		t.Error(err)
+	buf := new(bytes.Buffer)
+	vm.WriteTrace(buf, tracer.StructLogs())
+	if buf.Len() == 0 {
+		t.Log("no EVM operation logs generated")
+	} else {
+		t.Log("EVM operation log:\n" + buf.String())
 	}
 }
 

@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"runtime"
-	"time"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
+<<<<<<< HEAD
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -34,41 +33,54 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/logger/glog"
 	"github.com/ethereum/go-ethereum/params"
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"gopkg.in/urfave/cli.v1"
 )
 
+var gitCommit = "" // Git SHA1 commit hash of the release (set via linker flags)
+
 var (
-	app       *cli.App
+	app = utils.NewApp(gitCommit, "the evm command line interface")
+
 	DebugFlag = cli.BoolFlag{
 		Name:  "debug",
 		Usage: "output full trace logs",
 	}
-	ForceJitFlag = cli.BoolFlag{
-		Name:  "forcejit",
-		Usage: "forces jit compilation",
+	MemProfileFlag = cli.StringFlag{
+		Name:  "memprofile",
+		Usage: "creates a memory profile at the given path",
 	}
-	DisableJitFlag = cli.BoolFlag{
-		Name:  "nojit",
-		Usage: "disabled jit compilation",
+	CPUProfileFlag = cli.StringFlag{
+		Name:  "cpuprofile",
+		Usage: "creates a CPU profile at the given path",
+	}
+	StatDumpFlag = cli.BoolFlag{
+		Name:  "statdump",
+		Usage: "displays stack and heap memory information",
 	}
 	CodeFlag = cli.StringFlag{
 		Name:  "code",
 		Usage: "EVM code",
 	}
-	GasFlag = cli.StringFlag{
+	CodeFileFlag = cli.StringFlag{
+		Name:  "codefile",
+		Usage: "File containing EVM code. If '-' is specified, code is read from stdin ",
+	}
+	GasFlag = cli.Uint64Flag{
 		Name:  "gas",
 		Usage: "gas limit for the evm",
-		Value: "10000000000",
+		Value: 10000000000,
 	}
-	PriceFlag = cli.StringFlag{
+	PriceFlag = utils.BigFlag{
 		Name:  "price",
 		Usage: "price set for the evm",
-		Value: "0",
+		Value: new(big.Int),
 	}
-	ValueFlag = cli.StringFlag{
+	ValueFlag = utils.BigFlag{
 		Name:  "value",
 		Usage: "value set for the evm",
-		Value: "0",
+		Value: new(big.Int),
 	}
 	DumpFlag = cli.BoolFlag{
 		Name:  "dump",
@@ -78,10 +90,6 @@ var (
 		Name:  "input",
 		Usage: "input for the EVM",
 	}
-	SysStatFlag = cli.BoolFlag{
-		Name:  "sysstat",
-		Usage: "display system stats",
-	}
 	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
 		Usage: "sets the verbosity level",
@@ -90,24 +98,69 @@ var (
 		Name:  "create",
 		Usage: "indicates the action should be create rather than call",
 	}
+<<<<<<< HEAD
+=======
+	DisableGasMeteringFlag = cli.BoolFlag{
+		Name:  "nogasmetering",
+		Usage: "disable gas metering",
+	}
+	GenesisFlag = cli.StringFlag{
+		Name:  "prestate",
+		Usage: "JSON file with prestate (genesis) config",
+	}
+	MachineFlag = cli.BoolFlag{
+		Name:  "json",
+		Usage: "output trace logs in machine readable format (json)",
+	}
+	SenderFlag = cli.StringFlag{
+		Name:  "sender",
+		Usage: "The transaction origin",
+	}
+	ReceiverFlag = cli.StringFlag{
+		Name:  "receiver",
+		Usage: "The transaction receiver (execution context)",
+	}
+	DisableMemoryFlag = cli.BoolFlag{
+		Name:  "nomemory",
+		Usage: "disable memory output",
+	}
+	DisableStackFlag = cli.BoolFlag{
+		Name:  "nostack",
+		Usage: "disable stack output",
+	}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 func init() {
-	app = utils.NewApp("0.2", "the evm command line interface")
 	app.Flags = []cli.Flag{
 		CreateFlag,
 		DebugFlag,
 		VerbosityFlag,
-		ForceJitFlag,
-		DisableJitFlag,
-		SysStatFlag,
 		CodeFlag,
+		CodeFileFlag,
 		GasFlag,
 		PriceFlag,
 		ValueFlag,
 		DumpFlag,
 		InputFlag,
+		DisableGasMeteringFlag,
+		MemProfileFlag,
+		CPUProfileFlag,
+		StatDumpFlag,
+		GenesisFlag,
+		MachineFlag,
+		SenderFlag,
+		ReceiverFlag,
+		DisableMemoryFlag,
+		DisableStackFlag,
 	}
+	app.Commands = []cli.Command{
+		compileCommand,
+		disasmCommand,
+		runCommand,
+		stateTestCommand,
+	}
+<<<<<<< HEAD
 	app.Action = run
 }
 
@@ -182,6 +235,8 @@ num gc:     %d
 	}
 	fmt.Println()
 	return nil
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 func main() {
@@ -190,6 +245,7 @@ func main() {
 		os.Exit(1)
 	}
 }
+<<<<<<< HEAD
 
 type VMEnv struct {
 	state *state.StateDB
@@ -281,3 +337,5 @@ func (self *VMEnv) DelegateCall(caller vm.ContractRef, addr common.Address, data
 func (self *VMEnv) Create(caller vm.ContractRef, data []byte, gas, price, value *big.Int) ([]byte, common.Address, error) {
 	return core.Create(self, caller, data, gas, price, value)
 }
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23

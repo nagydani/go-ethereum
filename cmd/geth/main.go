@@ -18,35 +18,47 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
+<<<<<<< HEAD
 	"path/filepath"
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"runtime"
-	"strconv"
+	"sort"
 	"strings"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/ethereum/ethash"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/console"
 	"github.com/ethereum/go-ethereum/core"
+=======
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/console"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/internal/debug"
-	"github.com/ethereum/go-ethereum/logger"
-	"github.com/ethereum/go-ethereum/logger/glog"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
+<<<<<<< HEAD
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/release"
 	"github.com/ethereum/go-ethereum/rlp"
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"gopkg.in/urfave/cli.v1"
 )
 
 const (
+<<<<<<< HEAD
 	clientIdentifier = "Geth"   // Client identifier to advertise over the network
 	versionMajor     = 1        // Major version component of the current release
 	versionMinor     = 4        // Minor version component of the current release
@@ -146,18 +158,58 @@ participating.
 	}
 
 	app.Flags = []cli.Flag{
+=======
+	clientIdentifier = "geth" // Client identifier to advertise over the network
+)
+
+var (
+	// Git SHA1 commit hash of the release (set via linker flags)
+	gitCommit = ""
+	// Ethereum address of the Geth release oracle.
+	relOracle = common.HexToAddress("0xfa7b9770ca4cb04296cac84f37736d4041251cdf")
+	// The app that holds all commands and flags.
+	app = utils.NewApp(gitCommit, "the go-ethereum command line interface")
+	// flags that configure the node
+	nodeFlags = []cli.Flag{
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		utils.IdentityFlag,
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
 		utils.BootnodesFlag,
+		utils.BootnodesV4Flag,
+		utils.BootnodesV5Flag,
 		utils.DataDirFlag,
 		utils.KeyStoreDirFlag,
-		utils.BlockchainVersionFlag,
-		utils.OlympicFlag,
+		utils.NoUSBFlag,
+		utils.DashboardEnabledFlag,
+		utils.DashboardAddrFlag,
+		utils.DashboardPortFlag,
+		utils.DashboardRefreshFlag,
+		utils.DashboardAssetsFlag,
+		utils.EthashCacheDirFlag,
+		utils.EthashCachesInMemoryFlag,
+		utils.EthashCachesOnDiskFlag,
+		utils.EthashDatasetDirFlag,
+		utils.EthashDatasetsInMemoryFlag,
+		utils.EthashDatasetsOnDiskFlag,
+		utils.TxPoolNoLocalsFlag,
+		utils.TxPoolJournalFlag,
+		utils.TxPoolRejournalFlag,
+		utils.TxPoolPriceLimitFlag,
+		utils.TxPoolPriceBumpFlag,
+		utils.TxPoolAccountSlotsFlag,
+		utils.TxPoolGlobalSlotsFlag,
+		utils.TxPoolAccountQueueFlag,
+		utils.TxPoolGlobalQueueFlag,
+		utils.TxPoolLifetimeFlag,
 		utils.FastSyncFlag,
-		utils.CacheFlag,
+		utils.LightModeFlag,
+		utils.SyncModeFlag,
+		utils.LightServFlag,
+		utils.LightPeersFlag,
 		utils.LightKDFFlag,
-		utils.JSpathFlag,
+		utils.CacheFlag,
+		utils.TrieCacheGenFlag,
 		utils.ListenPortFlag,
 		utils.MaxPeersFlag,
 		utils.MaxPendingPeersFlag,
@@ -167,14 +219,31 @@ participating.
 		utils.OpposeDAOFork,
 		utils.MinerThreadsFlag,
 		utils.MiningEnabledFlag,
-		utils.MiningGPUFlag,
-		utils.AutoDAGFlag,
 		utils.TargetGasLimitFlag,
 		utils.NATFlag,
-		utils.NatspecEnabledFlag,
 		utils.NoDiscoverFlag,
+		utils.DiscoveryV5Flag,
+		utils.NetrestrictFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
+		utils.DeveloperFlag,
+		utils.DeveloperPeriodFlag,
+		utils.TestnetFlag,
+		utils.RinkebyFlag,
+		utils.VMEnableDebugFlag,
+		utils.NetworkIdFlag,
+		utils.RPCCORSDomainFlag,
+		utils.EthStatsURLFlag,
+		utils.MetricsEnabledFlag,
+		utils.FakePoWFlag,
+		utils.NoCompactionFlag,
+		utils.GpoBlocksFlag,
+		utils.GpoPercentileFlag,
+		utils.ExtraDataFlag,
+		configFileFlag,
+	}
+
+	rpcFlags = []cli.Flag{
 		utils.RPCEnabledFlag,
 		utils.RPCListenAddrFlag,
 		utils.RPCPortFlag,
@@ -185,30 +254,59 @@ participating.
 		utils.WSApiFlag,
 		utils.WSAllowedOriginsFlag,
 		utils.IPCDisabledFlag,
-		utils.IPCApiFlag,
 		utils.IPCPathFlag,
+<<<<<<< HEAD
 		utils.ExecFlag,
 		utils.PreloadJSFlag,
-		utils.WhisperEnabledFlag,
-		utils.DevModeFlag,
-		utils.TestNetFlag,
-		utils.VMForceJitFlag,
-		utils.VMJitCacheFlag,
-		utils.VMEnableJitFlag,
-		utils.NetworkIdFlag,
-		utils.RPCCORSDomainFlag,
-		utils.MetricsEnabledFlag,
-		utils.FakePoWFlag,
-		utils.SolcPathFlag,
-		utils.GpoMinGasPriceFlag,
-		utils.GpoMaxGasPriceFlag,
-		utils.GpoFullBlockRatioFlag,
-		utils.GpobaseStepDownFlag,
-		utils.GpobaseStepUpFlag,
-		utils.GpobaseCorrectionFactorFlag,
-		utils.ExtraDataFlag,
+=======
 	}
+
+	whisperFlags = []cli.Flag{
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
+		utils.WhisperEnabledFlag,
+		utils.WhisperMaxMessageSizeFlag,
+		utils.WhisperMinPOWFlag,
+	}
+)
+
+func init() {
+	// Initialize the CLI app and start Geth
+	app.Action = geth
+	app.HideVersion = true // we have a command to print the version
+	app.Copyright = "Copyright 2013-2017 The go-ethereum Authors"
+	app.Commands = []cli.Command{
+		// See chaincmd.go:
+		initCommand,
+		importCommand,
+		exportCommand,
+		copydbCommand,
+		removedbCommand,
+		dumpCommand,
+		// See monitorcmd.go:
+		monitorCommand,
+		// See accountcmd.go:
+		accountCommand,
+		walletCommand,
+		// See consolecmd.go:
+		consoleCommand,
+		attachCommand,
+		javascriptCommand,
+		// See misccmd.go:
+		makecacheCommand,
+		makedagCommand,
+		versionCommand,
+		bugCommand,
+		licenseCommand,
+		// See config.go
+		dumpConfigCommand,
+	}
+	sort.Sort(cli.CommandsByName(app.Commands))
+
+	app.Flags = append(app.Flags, nodeFlags...)
+	app.Flags = append(app.Flags, rpcFlags...)
+	app.Flags = append(app.Flags, consoleFlags...)
 	app.Flags = append(app.Flags, debug.Flags...)
+	app.Flags = append(app.Flags, whisperFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		runtime.GOMAXPROCS(runtime.NumCPU())
@@ -218,18 +316,20 @@ participating.
 		// Start system runtime metrics collection
 		go metrics.CollectProcessMetrics(3 * time.Second)
 
+<<<<<<< HEAD
 		// This should be the only place where reporting is enabled
 		// because it is not intended to run while testing.
 		// In addition to this check, bad block reports are sent only
 		// for chains with the main network genesis block and network id 1.
 		eth.EnableBadBlockReporting = true
 
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		utils.SetupNetwork(ctx)
 		return nil
 	}
 
 	app.After = func(ctx *cli.Context) error {
-		logger.Flush()
 		debug.Exit()
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
@@ -243,30 +343,11 @@ func main() {
 	}
 }
 
-func makeDefaultExtra() []byte {
-	var clientInfo = struct {
-		Version   uint
-		Name      string
-		GoVersion string
-		Os        string
-	}{uint(versionMajor<<16 | versionMinor<<8 | versionPatch), clientIdentifier, runtime.Version(), runtime.GOOS}
-	extra, err := rlp.EncodeToBytes(clientInfo)
-	if err != nil {
-		glog.V(logger.Warn).Infoln("error setting canonical miner information:", err)
-	}
-
-	if uint64(len(extra)) > params.MaximumExtraDataSize.Uint64() {
-		glog.V(logger.Warn).Infoln("error setting canonical miner information: extra exceeds", params.MaximumExtraDataSize)
-		glog.V(logger.Debug).Infof("extra: %x\n", extra)
-		return nil
-	}
-	return extra
-}
-
 // geth is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
 func geth(ctx *cli.Context) error {
+<<<<<<< HEAD
 	node := utils.MakeSystemNode(clientIdentifier, verString, relConfig, makeDefaultExtra(), ctx)
 	startNode(ctx, node)
 	node.Wait()
@@ -297,6 +378,11 @@ func initGenesis(ctx *cli.Context) error {
 		utils.Fatalf("failed to write genesis block: %v", err)
 	}
 	glog.V(logger.Info).Infof("successfully wrote genesis block and/or chain rule set: %x", block.Hash())
+=======
+	node := makeFullNode(ctx)
+	startNode(ctx, node)
+	node.Wait()
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	return nil
 }
 
@@ -308,27 +394,20 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	utils.StartNode(stack)
 
 	// Unlock any account specifically requested
-	var ethereum *eth.Ethereum
-	if err := stack.Service(&ethereum); err != nil {
-		utils.Fatalf("ethereum service not running: %v", err)
-	}
-	accman := ethereum.AccountManager()
+	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+
 	passwords := utils.MakePasswordList(ctx)
-
-	accounts := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
-	for i, account := range accounts {
+	unlocks := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
+	for i, account := range unlocks {
 		if trimmed := strings.TrimSpace(account); trimmed != "" {
-			unlockAccount(ctx, accman, trimmed, i, passwords)
+			unlockAccount(ctx, ks, trimmed, i, passwords)
 		}
 	}
-	// Start auxiliary services if enabled
-	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) {
-		if err := ethereum.StartMining(ctx.GlobalInt(utils.MinerThreadsFlag.Name), ctx.GlobalString(utils.MiningGPUFlag.Name)); err != nil {
-			utils.Fatalf("Failed to start mining: %v", err)
-		}
-	}
-}
+	// Register wallet event handlers to open and auto-derive wallets
+	events := make(chan accounts.WalletEvent, 16)
+	stack.AccountManager().Subscribe(events)
 
+<<<<<<< HEAD
 func makedag(ctx *cli.Context) error {
 	args := ctx.Args()
 	wrongArgs := func() {
@@ -338,21 +417,62 @@ func makedag(ctx *cli.Context) error {
 	case len(args) == 2:
 		blockNum, err := strconv.ParseUint(args[0], 0, 64)
 		dir := args[1]
+=======
+	go func() {
+		// Create an chain state reader for self-derivation
+		rpcClient, err := stack.Attach()
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		if err != nil {
-			wrongArgs()
-		} else {
-			dir = filepath.Clean(dir)
-			// seems to require a trailing slash
-			if !strings.HasSuffix(dir, "/") {
-				dir = dir + "/"
-			}
-			_, err = ioutil.ReadDir(dir)
-			if err != nil {
-				utils.Fatalf("Can't find dir")
-			}
-			fmt.Println("making DAG, this could take awhile...")
-			ethash.MakeDAG(blockNum, dir)
+			utils.Fatalf("Failed to attach to self: %v", err)
 		}
+		stateReader := ethclient.NewClient(rpcClient)
+
+		// Open any wallets already attached
+		for _, wallet := range stack.AccountManager().Wallets() {
+			if err := wallet.Open(""); err != nil {
+				log.Warn("Failed to open wallet", "url", wallet.URL(), "err", err)
+			}
+		}
+		// Listen for wallet event till termination
+		for event := range events {
+			switch event.Kind {
+			case accounts.WalletArrived:
+				if err := event.Wallet.Open(""); err != nil {
+					log.Warn("New wallet appeared, failed to open", "url", event.Wallet.URL(), "err", err)
+				}
+			case accounts.WalletOpened:
+				status, _ := event.Wallet.Status()
+				log.Info("New wallet appeared", "url", event.Wallet.URL(), "status", status)
+
+				if event.Wallet.URL().Scheme == "ledger" {
+					event.Wallet.SelfDerive(accounts.DefaultLedgerBaseDerivationPath, stateReader)
+				} else {
+					event.Wallet.SelfDerive(accounts.DefaultBaseDerivationPath, stateReader)
+				}
+
+			case accounts.WalletDropped:
+				log.Info("Old wallet dropped", "url", event.Wallet.URL())
+				event.Wallet.Close()
+			}
+		}
+	}()
+	// Start auxiliary services if enabled
+	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
+		// Mining only makes sense if a full Ethereum node is running
+		var ethereum *eth.Ethereum
+		if err := stack.Service(&ethereum); err != nil {
+			utils.Fatalf("ethereum service not running: %v", err)
+		}
+		// Use a reduced number of threads if requested
+		if threads := ctx.GlobalInt(utils.MinerThreadsFlag.Name); threads > 0 {
+			type threaded interface {
+				SetThreads(threads int)
+			}
+			if th, ok := ethereum.Engine().(threaded); ok {
+				th.SetThreads(threads)
+			}
+		}
+<<<<<<< HEAD
 	default:
 		wrongArgs()
 	}
@@ -374,15 +494,17 @@ func gpubench(ctx *cli.Context) error {
 		n, err := strconv.ParseUint(args[0], 0, 64)
 		if err != nil {
 			wrongArgs()
+=======
+		// Set the gas price to the limits from the CLI and start mining
+		ethereum.TxPool().SetGasPrice(utils.GlobalBig(ctx, utils.GasPriceFlag.Name))
+		if err := ethereum.StartMining(true); err != nil {
+			utils.Fatalf("Failed to start mining: %v", err)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
-		eth.GPUBench(n)
-	case len(args) == 0:
-		eth.GPUBench(0)
-	default:
-		wrongArgs()
 	}
 	return nil
 }
+<<<<<<< HEAD
 
 func version(c *cli.Context) error {
 	fmt.Println(clientIdentifier)
@@ -396,3 +518,5 @@ func version(c *cli.Context) error {
 
 	return nil
 }
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23

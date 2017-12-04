@@ -32,6 +32,7 @@ func TestNumberTypes(t *testing.T) {
 	if !bytes.Equal(unsigned, ubytes) {
 		t.Errorf("expected %x got %x", ubytes, unsigned)
 	}
+<<<<<<< HEAD
 }
 
 func TestPackNumber(t *testing.T) {
@@ -69,6 +70,8 @@ func TestPackNumber(t *testing.T) {
 	if packed := packNum(reflect.ValueOf("string")); packed != nil {
 		t.Errorf("expected 'string' to pack to nil. got %x instead", packed)
 	}
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 func TestSigned(t *testing.T) {

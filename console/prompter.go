@@ -44,7 +44,11 @@ type UserPrompter interface {
 	PromptConfirm(prompt string) (bool, error)
 
 	// SetHistory sets the the input scrollback history that the prompter will allow
+<<<<<<< HEAD
 	// the user to scoll back to.
+=======
+	// the user to scroll back to.
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	SetHistory(history []string)
 
 	// AppendHistory appends an entry to the scrollback history. It should be called
@@ -95,7 +99,11 @@ func newTerminalPrompter() *terminalPrompter {
 	}
 	p.SetCtrlCAborts(true)
 	p.SetTabCompletionStyle(liner.TabPrints)
+<<<<<<< HEAD
 
+=======
+	p.SetMultiLineMode(true)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	return p
 }
 
@@ -147,7 +155,11 @@ func (p *terminalPrompter) PromptConfirm(prompt string) (bool, error) {
 }
 
 // SetHistory sets the the input scrollback history that the prompter will allow
+<<<<<<< HEAD
 // the user to scoll back to.
+=======
+// the user to scroll back to.
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 func (p *terminalPrompter) SetHistory(history []string) {
 	p.State.ReadHistory(strings.NewReader(strings.Join(history, "\n")))
 }

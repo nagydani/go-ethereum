@@ -20,6 +20,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+<<<<<<< HEAD
+=======
+	"strings"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 var (
@@ -29,6 +33,10 @@ var (
 	GitTagFlag      = flag.String("git-tag", "", `Overrides git tag being built`)
 	BuildnumFlag    = flag.String("buildnum", "", `Overrides CI build number`)
 	PullRequestFlag = flag.Bool("pull-request", false, `Overrides pull request status of the build`)
+<<<<<<< HEAD
+=======
+	CronJobFlag     = flag.Bool("cron-job", false, `Overrides cron job status of the build`)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 )
 
 // Environment contains metadata provided by the build environment.
@@ -38,6 +46,10 @@ type Environment struct {
 	Commit, Branch, Tag string // Git info
 	Buildnum            string
 	IsPullRequest       bool
+<<<<<<< HEAD
+=======
+	IsCronJob           bool
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 func (env Environment) String() string {
@@ -58,6 +70,10 @@ func Env() Environment {
 			Tag:           os.Getenv("TRAVIS_TAG"),
 			Buildnum:      os.Getenv("TRAVIS_BUILD_NUMBER"),
 			IsPullRequest: os.Getenv("TRAVIS_PULL_REQUEST") != "false",
+<<<<<<< HEAD
+=======
+			IsCronJob:     os.Getenv("TRAVIS_EVENT_TYPE") == "cron",
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
 	case os.Getenv("CI") == "True" && os.Getenv("APPVEYOR") == "True":
 		return Environment{
@@ -68,6 +84,10 @@ func Env() Environment {
 			Tag:           os.Getenv("APPVEYOR_REPO_TAG_NAME"),
 			Buildnum:      os.Getenv("APPVEYOR_BUILD_NUMBER"),
 			IsPullRequest: os.Getenv("APPVEYOR_PULL_REQUEST_NUMBER") != "",
+<<<<<<< HEAD
+=======
+			IsCronJob:     os.Getenv("APPVEYOR_SCHEDULED_BUILD") == "True",
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
 	default:
 		return LocalEnv()
@@ -77,6 +97,7 @@ func Env() Environment {
 // LocalEnv returns build environment metadata gathered from git.
 func LocalEnv() Environment {
 	env := applyEnvFlags(Environment{Name: "local", Repo: "ethereum/go-ethereum"})
+<<<<<<< HEAD
 	if _, err := os.Stat(".git"); err != nil {
 		return env
 	}
@@ -93,6 +114,33 @@ func LocalEnv() Environment {
 	return env
 }
 
+=======
+
+	head := readGitFile("HEAD")
+	if splits := strings.Split(head, " "); len(splits) == 2 {
+		head = splits[1]
+	} else {
+		return env
+	}
+	if env.Commit == "" {
+		env.Commit = readGitFile(head)
+	}
+	if env.Branch == "" {
+		if head != "HEAD" {
+			env.Branch = strings.TrimLeft(head, "refs/heads/")
+		}
+	}
+	if info, err := os.Stat(".git/objects"); err == nil && info.IsDir() && env.Tag == "" {
+		env.Tag = firstLine(RunGit("tag", "-l", "--points-at", "HEAD"))
+	}
+	return env
+}
+
+func firstLine(s string) string {
+	return strings.Split(s, "\n")[0]
+}
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 func applyEnvFlags(env Environment) Environment {
 	if !flag.Parsed() {
 		panic("you need to call flag.Parse before Env or LocalEnv")
@@ -112,5 +160,11 @@ func applyEnvFlags(env Environment) Environment {
 	if *PullRequestFlag {
 		env.IsPullRequest = true
 	}
+<<<<<<< HEAD
+=======
+	if *CronJobFlag {
+		env.IsCronJob = true
+	}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	return env
 }

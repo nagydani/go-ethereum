@@ -20,11 +20,21 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+<<<<<<< HEAD
+=======
+	"io"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+<<<<<<< HEAD
 	"path/filepath"
+=======
+	"path"
+	"path/filepath"
+	"runtime"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"strings"
 	"text/template"
 )
@@ -51,6 +61,7 @@ func MustRunCommand(cmd string, args ...string) {
 // GOPATH returns the value that the GOPATH environment
 // variable should be set to.
 func GOPATH() string {
+<<<<<<< HEAD
 	path := filepath.SplitList(os.Getenv("GOPATH"))
 	if len(path) == 0 {
 		log.Fatal("GOPATH is not set")
@@ -65,6 +76,12 @@ func GOPATH() string {
 	newpath := append(path[:1], godeps)
 	newpath = append(newpath, path[1:]...)
 	return strings.Join(newpath, string(filepath.ListSeparator))
+=======
+	if os.Getenv("GOPATH") == "" {
+		log.Fatal("GOPATH is not set")
+	}
+	return os.Getenv("GOPATH")
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 // VERSION returns the content of the VERSION file.
@@ -76,6 +93,11 @@ func VERSION() string {
 	return string(bytes.TrimSpace(version))
 }
 
+<<<<<<< HEAD
+=======
+var warnedAboutGit bool
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 // RunGit runs a git subcommand and returns its output.
 // The command must complete successfully.
 func RunGit(args ...string) string {
@@ -83,7 +105,14 @@ func RunGit(args ...string) string {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err == exec.ErrNotFound {
+<<<<<<< HEAD
 		log.Println("no git in PATH")
+=======
+		if !warnedAboutGit {
+			log.Println("Warning: can't find 'git' in PATH")
+			warnedAboutGit = true
+		}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		return ""
 	} else if err != nil {
 		log.Fatal(strings.Join(cmd.Args, " "), ": ", err, "\n", stderr.String())
@@ -91,6 +120,18 @@ func RunGit(args ...string) string {
 	return strings.TrimSpace(stdout.String())
 }
 
+<<<<<<< HEAD
+=======
+// readGitFile returns content of file in .git directory.
+func readGitFile(file string) string {
+	content, err := ioutil.ReadFile(path.Join(".git", file))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(content))
+}
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 // Render renders the given template file into outputFile.
 func Render(templateFile, outputFile string, outputPerm os.FileMode, x interface{}) {
 	tpl := template.Must(template.ParseFiles(templateFile))
@@ -118,3 +159,67 @@ func render(tpl *template.Template, outputFile string, outputPerm os.FileMode, x
 		log.Fatal(err)
 	}
 }
+<<<<<<< HEAD
+=======
+
+// CopyFile copies a file.
+func CopyFile(dst, src string, mode os.FileMode) {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		log.Fatal(err)
+	}
+	destFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer destFile.Close()
+
+	srcFile, err := os.Open(src)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer srcFile.Close()
+
+	if _, err := io.Copy(destFile, srcFile); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// GoTool returns the command that runs a go tool. This uses go from GOROOT instead of PATH
+// so that go commands executed by build use the same version of Go as the 'host' that runs
+// build code. e.g.
+//
+//     /usr/lib/go-1.8/bin/go run build/ci.go ...
+//
+// runs using go 1.8 and invokes go 1.8 tools from the same GOROOT. This is also important
+// because runtime.Version checks on the host should match the tools that are run.
+func GoTool(tool string, args ...string) *exec.Cmd {
+	args = append([]string{tool}, args...)
+	return exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), args...)
+}
+
+// ExpandPackagesNoVendor expands a cmd/go import path pattern, skipping
+// vendored packages.
+func ExpandPackagesNoVendor(patterns []string) []string {
+	expand := false
+	for _, pkg := range patterns {
+		if strings.Contains(pkg, "...") {
+			expand = true
+		}
+	}
+	if expand {
+		cmd := GoTool("list", patterns...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatalf("package listing failed: %v\n%s", err, string(out))
+		}
+		var packages []string
+		for _, line := range strings.Split(string(out), "\n") {
+			if !strings.Contains(line, "/vendor/") {
+				packages = append(packages, strings.TrimSpace(line))
+			}
+		}
+		return packages
+	}
+	return patterns
+}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23

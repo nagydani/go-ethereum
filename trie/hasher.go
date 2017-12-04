@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
+<<<<<<< HEAD
 type hasher struct {
 	tmp                  *bytes.Buffer
 	sha                  hash.Hash
@@ -53,13 +54,67 @@ func returnHasherToPool(h *hasher) {
 // original node initialzied with the computed hash to replace the original one.
 func (h *hasher) hash(n node, db DatabaseWriter, force bool) (node, node, error) {
 	// If we're not storing the node, just hashing, use avaialble cached data
+=======
+// calculator is a utility used by the hasher to calculate the hash value of the tree node.
+type calculator struct {
+	sha    hash.Hash
+	buffer *bytes.Buffer
+}
+
+// calculatorPool is a set of temporary calculators that may be individually saved and retrieved.
+var calculatorPool = sync.Pool{
+	New: func() interface{} {
+		return &calculator{buffer: new(bytes.Buffer), sha: sha3.NewKeccak256()}
+	},
+}
+
+// hasher hasher is used to calculate the hash value of the whole tree.
+type hasher struct {
+	cachegen   uint16
+	cachelimit uint16
+	threaded   bool
+	mu         sync.Mutex
+}
+
+func newHasher(cachegen, cachelimit uint16) *hasher {
+	h := &hasher{
+		cachegen:   cachegen,
+		cachelimit: cachelimit,
+	}
+	return h
+}
+
+// newCalculator retrieves a cleaned calculator from calculator pool.
+func (h *hasher) newCalculator() *calculator {
+	calculator := calculatorPool.Get().(*calculator)
+	calculator.buffer.Reset()
+	calculator.sha.Reset()
+	return calculator
+}
+
+// returnCalculator returns a no longer used calculator to the pool.
+func (h *hasher) returnCalculator(calculator *calculator) {
+	calculatorPool.Put(calculator)
+}
+
+// hash collapses a node down into a hash node, also returning a copy of the
+// original node initialized with the computed hash to replace the original one.
+func (h *hasher) hash(n node, db DatabaseWriter, force bool) (node, node, error) {
+	// If we're not storing the node, just hashing, use available cached data
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if hash, dirty := n.cache(); hash != nil {
 		if db == nil {
 			return hash, n, nil
 		}
 		if n.canUnload(h.cachegen, h.cachelimit) {
+<<<<<<< HEAD
 			// Evict the node from cache. All of its subnodes will have a lower or equal
 			// cache generation number.
+=======
+			// Unload the node from cache. All of its subnodes will have a lower or equal
+			// cache generation number.
+			cacheUnloadCounter.Inc(1)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 			return hash, hash, nil
 		}
 		if !dirty {
@@ -75,6 +130,7 @@ func (h *hasher) hash(n node, db DatabaseWriter, force bool) (node, node, error)
 	if err != nil {
 		return hashNode{}, n, err
 	}
+<<<<<<< HEAD
 	// Cache the hash of the ndoe for later reuse.
 	if hash, ok := hashed.(hashNode); ok && !force {
 		switch cached := cached.(type) {
@@ -92,6 +148,22 @@ func (h *hasher) hash(n node, db DatabaseWriter, force bool) (node, node, error)
 				cached.flags.dirty = false
 			}
 			return hashed, cached, nil
+=======
+	// Cache the hash of the node for later reuse and remove
+	// the dirty flag in commit mode. It's fine to assign these values directly
+	// without copying the node first because hashChildren copies it.
+	cachedHash, _ := hashed.(hashNode)
+	switch cn := cached.(type) {
+	case *shortNode:
+		cn.flags.hash = cachedHash
+		if db != nil {
+			cn.flags.dirty = false
+		}
+	case *fullNode:
+		cn.flags.hash = cachedHash
+		if db != nil {
+			cn.flags.dirty = false
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		}
 	}
 	return hashed, cached, nil
@@ -107,7 +179,11 @@ func (h *hasher) hashChildren(original node, db DatabaseWriter) (node, node, err
 	case *shortNode:
 		// Hash the short node's child, caching the newly hashed subtree
 		collapsed, cached := n.copy(), n.copy()
+<<<<<<< HEAD
 		collapsed.Key = compactEncode(n.Key)
+=======
+		collapsed.Key = hexToCompact(n.Key)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		cached.Key = common.CopyBytes(n.Key)
 
 		if _, ok := n.Val.(valueNode); !ok {
@@ -125,6 +201,7 @@ func (h *hasher) hashChildren(original node, db DatabaseWriter) (node, node, err
 		// Hash the full node's children, caching the newly hashed subtrees
 		collapsed, cached := n.copy(), n.copy()
 
+<<<<<<< HEAD
 		for i := 0; i < 16; i++ {
 			if n.Children[i] != nil {
 				collapsed.Children[i], cached.Children[i], err = h.hash(n.Children[i], db, false)
@@ -135,6 +212,51 @@ func (h *hasher) hashChildren(original node, db DatabaseWriter) (node, node, err
 				collapsed.Children[i] = valueNode(nil) // Ensure that nil children are encoded as empty strings.
 			}
 		}
+=======
+		// hashChild is a helper to hash a single child, which is called either on the
+		// same thread as the caller or in a goroutine for the toplevel branching.
+		hashChild := func(index int, wg *sync.WaitGroup) {
+			if wg != nil {
+				defer wg.Done()
+			}
+			// Ensure that nil children are encoded as empty strings.
+			if collapsed.Children[index] == nil {
+				collapsed.Children[index] = valueNode(nil)
+				return
+			}
+			// Hash all other children properly
+			var herr error
+			collapsed.Children[index], cached.Children[index], herr = h.hash(n.Children[index], db, false)
+			if herr != nil {
+				h.mu.Lock() // rarely if ever locked, no congenstion
+				err = herr
+				h.mu.Unlock()
+			}
+		}
+		// If we're not running in threaded mode yet, span a goroutine for each child
+		if !h.threaded {
+			// Disable further threading
+			h.threaded = true
+
+			// Hash all the children concurrently
+			var wg sync.WaitGroup
+			for i := 0; i < 16; i++ {
+				wg.Add(1)
+				go hashChild(i, &wg)
+			}
+			wg.Wait()
+
+			// Reenable threading for subsequent hash calls
+			h.threaded = false
+		} else {
+			for i := 0; i < 16; i++ {
+				hashChild(i, nil)
+			}
+		}
+		if err != nil {
+			return original, original, err
+		}
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		cached.Children[16] = n.Children[16]
 		if collapsed.Children[16] == nil {
 			collapsed.Children[16] = valueNode(nil)
@@ -152,6 +274,7 @@ func (h *hasher) store(n node, db DatabaseWriter, force bool) (node, error) {
 	if _, isHash := n.(hashNode); n == nil || isHash {
 		return n, nil
 	}
+<<<<<<< HEAD
 	// Generate the RLP encoding of the node
 	h.tmp.Reset()
 	if err := rlp.Encode(h.tmp, n); err != nil {
@@ -159,17 +282,40 @@ func (h *hasher) store(n node, db DatabaseWriter, force bool) (node, error) {
 	}
 
 	if h.tmp.Len() < 32 && !force {
+=======
+	calculator := h.newCalculator()
+	defer h.returnCalculator(calculator)
+
+	// Generate the RLP encoding of the node
+	if err := rlp.Encode(calculator.buffer, n); err != nil {
+		panic("encode error: " + err.Error())
+	}
+	if calculator.buffer.Len() < 32 && !force {
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		return n, nil // Nodes smaller than 32 bytes are stored inside their parent
 	}
 	// Larger nodes are replaced by their hash and stored in the database.
 	hash, _ := n.cache()
 	if hash == nil {
+<<<<<<< HEAD
 		h.sha.Reset()
 		h.sha.Write(h.tmp.Bytes())
 		hash = hashNode(h.sha.Sum(nil))
 	}
 	if db != nil {
 		return hash, db.Put(hash, h.tmp.Bytes())
+=======
+		calculator.sha.Write(calculator.buffer.Bytes())
+		hash = hashNode(calculator.sha.Sum(nil))
+	}
+	if db != nil {
+		// db might be a leveldb batch, which is not safe for concurrent writes
+		h.mu.Lock()
+		err := db.Put(hash, calculator.buffer.Bytes())
+		h.mu.Unlock()
+
+		return hash, err
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 	return hash, nil
 }

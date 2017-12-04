@@ -16,6 +16,7 @@
 
 package params
 
+<<<<<<< HEAD
 import "math/big"
 
 type GasTable struct {
@@ -25,19 +26,35 @@ type GasTable struct {
 	SLoad       *big.Int
 	Calls       *big.Int
 	Suicide     *big.Int
+=======
+type GasTable struct {
+	ExtcodeSize uint64
+	ExtcodeCopy uint64
+	Balance     uint64
+	SLoad       uint64
+	Calls       uint64
+	Suicide     uint64
+
+	ExpByte uint64
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 
 	// CreateBySuicide occurs when the
 	// refunded account is one that does
 	// not exist. This logic is similar
 	// to call. May be left nil. Nil means
 	// not charged.
+<<<<<<< HEAD
 	CreateBySuicide *big.Int
+=======
+	CreateBySuicide uint64
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 }
 
 var (
 	// GasTableHomestead contain the gas prices for
 	// the homestead phase.
 	GasTableHomestead = GasTable{
+<<<<<<< HEAD
 		ExtcodeSize: big.NewInt(20),
 		ExtcodeCopy: big.NewInt(20),
 		Balance:     big.NewInt(20),
@@ -48,10 +65,20 @@ var (
 		// explicitly set to nil to indicate
 		// this rule does not apply to homestead.
 		CreateBySuicide: nil,
+=======
+		ExtcodeSize: 20,
+		ExtcodeCopy: 20,
+		Balance:     20,
+		SLoad:       50,
+		Calls:       40,
+		Suicide:     0,
+		ExpByte:     10,
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 
 	// GasTableHomestead contain the gas re-prices for
 	// the homestead phase.
+<<<<<<< HEAD
 	GasTableHomesteadGasRepriceFork = GasTable{
 		ExtcodeSize: big.NewInt(700),
 		ExtcodeCopy: big.NewInt(700),
@@ -61,5 +88,29 @@ var (
 		Suicide:     big.NewInt(5000),
 
 		CreateBySuicide: big.NewInt(25000),
+=======
+	GasTableEIP150 = GasTable{
+		ExtcodeSize: 700,
+		ExtcodeCopy: 700,
+		Balance:     400,
+		SLoad:       200,
+		Calls:       700,
+		Suicide:     5000,
+		ExpByte:     10,
+
+		CreateBySuicide: 25000,
+	}
+
+	GasTableEIP158 = GasTable{
+		ExtcodeSize: 700,
+		ExtcodeCopy: 700,
+		Balance:     400,
+		SLoad:       200,
+		Calls:       700,
+		Suicide:     5000,
+		ExpByte:     50,
+
+		CreateBySuicide: 25000,
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 )

@@ -17,15 +17,28 @@
 package main
 
 import (
+<<<<<<< HEAD
 	"os"
 	"os/signal"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/console"
+=======
+	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+
+	"github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/ethereum/go-ethereum/console"
+	"github.com/ethereum/go-ethereum/node"
+	"github.com/ethereum/go-ethereum/rpc"
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	"gopkg.in/urfave/cli.v1"
 )
 
 var (
+<<<<<<< HEAD
 	consoleCommand = cli.Command{
 		Action: localConsole,
 		Name:   "console",
@@ -40,10 +53,34 @@ See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console
 		Action: remoteConsole,
 		Name:   "attach",
 		Usage:  `Geth Console: interactive JavaScript environment (connect to node)`,
+=======
+	consoleFlags = []cli.Flag{utils.JSpathFlag, utils.ExecFlag, utils.PreloadJSFlag}
+
+	consoleCommand = cli.Command{
+		Action:   utils.MigrateFlags(localConsole),
+		Name:     "console",
+		Usage:    "Start an interactive JavaScript environment",
+		Flags:    append(append(append(nodeFlags, rpcFlags...), consoleFlags...), whisperFlags...),
+		Category: "CONSOLE COMMANDS",
+		Description: `
+The Geth console is an interactive shell for the JavaScript runtime environment
+which exposes a node admin interface as well as the Ðapp JavaScript API.
+See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console.`,
+	}
+
+	attachCommand = cli.Command{
+		Action:    utils.MigrateFlags(remoteConsole),
+		Name:      "attach",
+		Usage:     "Start an interactive JavaScript environment (connect to node)",
+		ArgsUsage: "[endpoint]",
+		Flags:     append(consoleFlags, utils.DataDirFlag),
+		Category:  "CONSOLE COMMANDS",
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console.
+<<<<<<< HEAD
 This command allows to open a console on a running geth node.
 	`,
 	}
@@ -55,6 +92,21 @@ This command allows to open a console on a running geth node.
 The JavaScript VM exposes a node admin interface as well as the Ðapp
 JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console
 `,
+=======
+This command allows to open a console on a running geth node.`,
+	}
+
+	javascriptCommand = cli.Command{
+		Action:    utils.MigrateFlags(ephemeralConsole),
+		Name:      "js",
+		Usage:     "Execute the specified JavaScript files",
+		ArgsUsage: "<jsfile> [jsfile...]",
+		Flags:     append(nodeFlags, consoleFlags...),
+		Category:  "CONSOLE COMMANDS",
+		Description: `
+The JavaScript VM exposes a node admin interface as well as the Ðapp
+JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Console`,
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	}
 )
 
@@ -62,7 +114,11 @@ JavaScript API. See https://github.com/ethereum/go-ethereum/wiki/Javascipt-Conso
 // same time.
 func localConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
+<<<<<<< HEAD
 	node := utils.MakeSystemNode(clientIdentifier, verString, relConfig, makeDefaultExtra(), ctx)
+=======
+	node := makeFullNode(ctx)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	startNode(ctx, node)
 	defer node.Stop()
 
@@ -72,11 +128,19 @@ func localConsole(ctx *cli.Context) error {
 		utils.Fatalf("Failed to attach to the inproc geth: %v", err)
 	}
 	config := console.Config{
+<<<<<<< HEAD
 		DataDir: node.DataDir(),
+=======
+		DataDir: utils.MakeDataDir(ctx),
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	console, err := console.New(config)
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
@@ -99,27 +163,50 @@ func localConsole(ctx *cli.Context) error {
 // console to it.
 func remoteConsole(ctx *cli.Context) error {
 	// Attach to a remotely running geth instance and start the JavaScript console
+<<<<<<< HEAD
 	client, err := utils.NewRemoteRPCClient(ctx)
+=======
+	endpoint := ctx.Args().First()
+	if endpoint == "" && ctx.GlobalIsSet(utils.DataDirFlag.Name) {
+		endpoint = fmt.Sprintf("%s/geth.ipc", ctx.GlobalString(utils.DataDirFlag.Name))
+	}
+	client, err := dialRPC(endpoint)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if err != nil {
 		utils.Fatalf("Unable to attach to remote geth: %v", err)
 	}
 	config := console.Config{
+<<<<<<< HEAD
 		DataDir: utils.MustMakeDataDir(ctx),
+=======
+		DataDir: utils.MakeDataDir(ctx),
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	console, err := console.New(config)
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
 	}
 	defer console.Stop(false)
 
+<<<<<<< HEAD
 	// If only a short execution was requested, evaluate and return
+=======
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	if script := ctx.GlobalString(utils.ExecFlag.Name); script != "" {
 		console.Evaluate(script)
 		return nil
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	// Otherwise print the welcome screen and enter interactive mode
 	console.Welcome()
 	console.Interactive()
@@ -127,12 +214,35 @@ func remoteConsole(ctx *cli.Context) error {
 	return nil
 }
 
+<<<<<<< HEAD
 // ephemeralConsole starts a new geth node, attaches an ephemeral JavaScript
 // console to it, and each of the files specified as arguments and tears the
 // everything down.
 func ephemeralConsole(ctx *cli.Context) error {
 	// Create and start the node based on the CLI flags
 	node := utils.MakeSystemNode(clientIdentifier, verString, relConfig, makeDefaultExtra(), ctx)
+=======
+// dialRPC returns a RPC client which connects to the given endpoint.
+// The check for empty endpoint implements the defaulting logic
+// for "geth attach" and "geth monitor" with no argument.
+func dialRPC(endpoint string) (*rpc.Client, error) {
+	if endpoint == "" {
+		endpoint = node.DefaultIPCEndpoint(clientIdentifier)
+	} else if strings.HasPrefix(endpoint, "rpc:") || strings.HasPrefix(endpoint, "ipc:") {
+		// Backwards compatibility with geth < 1.5 which required
+		// these prefixes.
+		endpoint = endpoint[4:]
+	}
+	return rpc.Dial(endpoint)
+}
+
+// ephemeralConsole starts a new geth node, attaches an ephemeral JavaScript
+// console to it, executes each of the files specified as arguments and tears
+// everything down.
+func ephemeralConsole(ctx *cli.Context) error {
+	// Create and start the node based on the CLI flags
+	node := makeFullNode(ctx)
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	startNode(ctx, node)
 	defer node.Stop()
 
@@ -142,11 +252,19 @@ func ephemeralConsole(ctx *cli.Context) error {
 		utils.Fatalf("Failed to attach to the inproc geth: %v", err)
 	}
 	config := console.Config{
+<<<<<<< HEAD
 		DataDir: node.DataDir(),
+=======
+		DataDir: utils.MakeDataDir(ctx),
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 		DocRoot: ctx.GlobalString(utils.JSpathFlag.Name),
 		Client:  client,
 		Preload: utils.MakeConsolePreloads(ctx),
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d06e41f04d75c31334c455063e9ec7b4136bf23
 	console, err := console.New(config)
 	if err != nil {
 		utils.Fatalf("Failed to start the JavaScript console: %v", err)
